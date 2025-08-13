@@ -132,6 +132,104 @@ app.post('/api/add-phrase', (req, res) => {
   );
 });
 
+// API для обновления слова
+app.put('/api/update-word/:id', (req, res) => {
+  const { id } = req.params;
+  const { englishWord, russianTranslation } = req.body;
+  
+  if (!englishWord || !russianTranslation) {
+    return res.status(400).json({ error: 'Необходимо указать слово и перевод' });
+  }
+
+  db.run(
+    'UPDATE words SET english_word = ?, russian_translation = ? WHERE id = ?',
+    [englishWord.trim(), russianTranslation.trim(), id],
+    function(err) {
+      if (err) {
+        return res.status(500).json({ error: 'Ошибка при обновлении слова' });
+      }
+      
+      if (this.changes === 0) {
+        return res.status(404).json({ error: 'Слово не найдено' });
+      }
+      
+      res.json({ 
+        success: true, 
+        message: 'Слово успешно обновлено' 
+      });
+    }
+  );
+});
+
+// API для обновления фразы
+app.put('/api/update-phrase/:id', (req, res) => {
+  const { id } = req.params;
+  const { englishPhrase, russianTranslation } = req.body;
+  
+  if (!englishPhrase || !russianTranslation) {
+    return res.status(400).json({ error: 'Необходимо указать фразу и перевод' });
+  }
+
+  db.run(
+    'UPDATE phrases SET english_phrase = ?, russian_translation = ? WHERE id = ?',
+    [englishPhrase.trim(), russianTranslation.trim(), id],
+    function(err) {
+      if (err) {
+        return res.status(500).json({ error: 'Ошибка при обновлении фразы' });
+      }
+      
+      if (this.changes === 0) {
+        return res.status(404).json({ error: 'Фраза не найдена' });
+      }
+      
+      res.json({ 
+        success: true, 
+        message: 'Фраза успешно обновлена' 
+      });
+    }
+  );
+});
+
+// API для удаления слова
+app.delete('/api/delete-word/:id', (req, res) => {
+  const { id } = req.params;
+  
+  db.run('DELETE FROM words WHERE id = ?', [id], function(err) {
+    if (err) {
+      return res.status(500).json({ error: 'Ошибка при удалении слова' });
+    }
+    
+    if (this.changes === 0) {
+      return res.status(404).json({ error: 'Слово не найдено' });
+    }
+    
+    res.json({ 
+      success: true, 
+      message: 'Слово успешно удалено' 
+    });
+  });
+});
+
+// API для удаления фразы
+app.delete('/api/delete-phrase/:id', (req, res) => {
+  const { id } = req.params;
+  
+  db.run('DELETE FROM phrases WHERE id = ?', [id], function(err) {
+    if (err) {
+      return res.status(500).json({ error: 'Ошибка при удалении фразы' });
+    }
+    
+    if (this.changes === 0) {
+      return res.status(404).json({ error: 'Фраза не найдена' });
+    }
+    
+    res.json({ 
+      success: true, 
+      message: 'Фраза успешно удалена' 
+    });
+  });
+});
+
 // API для получения всех слов
 app.get('/api/words', (req, res) => {
   db.all('SELECT * FROM words ORDER BY created_at DESC', (err, rows) => {

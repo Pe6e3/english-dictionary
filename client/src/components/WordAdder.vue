@@ -3,6 +3,13 @@
     <div class="container">
       <h1 class="title">Изучение английских слов</h1>
       
+      <!-- Кнопка перехода к словарю -->
+      <div class="dictionary-link">
+        <RouterLink to="/dictionary" class="dictionary-btn">
+          📚 Просмотреть словарь
+        </RouterLink>
+      </div>
+
       <!-- Переключатель между словами и фразами -->
       <div class="toggle-container">
         <button 
@@ -156,8 +163,13 @@
 </template>
 
 <script>
+import { RouterLink } from 'vue-router'
+
 export default {
   name: 'WordAdder',
+  components: {
+    RouterLink
+  },
   data() {
     return {
       mode: 'word', // 'word' или 'phrase'
@@ -515,6 +527,32 @@ export default {
   padding: 40px 20px 20px;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
+}
+
+.dictionary-link {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.dictionary-btn {
+  display: inline-block;
+  background: #4299e1;
+  color: white;
+  padding: 12px 25px;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: all 0.3s ease;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 4px 15px rgba(66, 153, 225, 0.3);
+}
+
+.dictionary-btn:hover {
+  background: #3182ce;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(66, 153, 225, 0.4);
 }
 
 .toggle-container {
