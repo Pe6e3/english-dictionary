@@ -19,85 +19,110 @@
         </button>
       </div>
 
-      <!-- Поиск -->
-      <div class="search-container">
-        <input
-          v-model="searchQuery"
-          type="text"
-          placeholder="Поиск по словарю..."
-          class="search-input"
-        />
+      <!-- Поиск и статистика -->
+      <div class="header-row">
+        <div class="search-container">
+          <input
+            v-model="searchQuery"
+            type="text"
+            placeholder="Поиск по словарю..."
+            class="search-input"
+          />
+        </div>
+        <div class="stats-compact">
+          <span class="stat-badge">{{ words.length + phrases.length }}</span>
+          <span class="stat-label">всего</span>
+        </div>
       </div>
 
-      <!-- Список слов/фраз -->
-      <div class="dictionary-list">
+      <!-- Таблица слов/фраз -->
+      <div class="table-container">
         <div v-if="filteredItems.length === 0" class="empty-state">
           {{ searchQuery ? 'Ничего не найдено' : 'Пока ничего не добавлено' }}
         </div>
-        <div v-else class="items-grid">
+        <div v-else class="table">
+          <!-- Заголовок таблицы -->
+          <div class="table-header">
+            <div class="col-english">Английский</div>
+            <div class="col-arrow">→</div>
+            <div class="col-russian">Русский перевод</div>
+            <div class="col-date">Дата</div>
+            <div class="col-actions">Действия</div>
+          </div>
+          
+          <!-- Строки таблицы -->
           <div 
             v-for="item in filteredItems" 
             :key="item.id" 
-            class="item-card"
+            class="table-row"
           >
             <!-- Режим просмотра -->
-            <div v-if="!item.editing" class="item-content">
-              <div class="item-main">
-                <span class="english">{{ mode === 'word' ? item.english_word : item.english_phrase }}</span>
-                <span class="arrow">→</span>
-                <span class="russian">{{ item.russian_translation }}</span>
+            <div v-if="!item.editing" class="row-content">
+              <div class="col-english">
+                <span class="text-content">{{ mode === 'word' ? item.english_word : item.english_phrase }}</span>
               </div>
-              <div class="item-meta">
-                <span class="date">{{ formatDate(item.created_at) }}</span>
-                <div class="actions">
-                  <button 
-                    class="action-btn edit"
-                    @click="startEdit(item)"
-                    title="Редактировать"
-                  >
-                    ✏️
-                  </button>
-                  <button 
-                    class="action-btn delete"
-                    @click="confirmDelete(item)"
-                    title="Удалить"
-                  >
-                    🗑️
-                  </button>
-                </div>
+              <div class="col-arrow">→</div>
+              <div class="col-russian">
+                <span class="text-content">{{ item.russian_translation }}</span>
+              </div>
+              <div class="col-date">
+                <span class="date-text">{{ formatDate(item.created_at) }}</span>
+              </div>
+              <div class="col-actions">
+                <button 
+                  class="action-btn edit"
+                  @click="startEdit(item)"
+                  title="Редактировать"
+                >
+                  ✏️
+                </button>
+                <button 
+                  class="action-btn delete"
+                  @click="confirmDelete(item)"
+                  title="Удалить"
+                >
+                  🗑️
+                </button>
               </div>
             </div>
 
             <!-- Режим редактирования -->
-            <div v-else class="edit-form">
-              <div class="edit-inputs">
+            <div v-else class="edit-row">
+              <div class="col-english">
                 <input
                   v-model="item.editEnglish"
                   type="text"
                   class="edit-input"
-                  :placeholder="mode === 'word' ? 'Английское слово' : 'Английская фраза'"
+                  :placeholder="mode === 'word' ? 'Слово' : 'Фраза'"
                 />
-                <span class="arrow">→</span>
+              </div>
+              <div class="col-arrow">→</div>
+              <div class="col-russian">
                 <input
                   v-model="item.editRussian"
                   type="text"
                   class="edit-input"
-                  placeholder="Русский перевод"
+                  placeholder="Перевод"
                 />
               </div>
-              <div class="edit-actions">
+              <div class="col-date">
+                <span class="date-text">{{ formatDate(item.created_at) }}</span>
+              </div>
+              <div class="col-actions">
                 <button 
                   class="save-btn"
                   @click="saveEdit(item)"
                   :disabled="!item.editEnglish.trim() || !item.editRussian.trim()"
+                  title="Сохранить"
                 >
-                  💾 Сохранить
+                  💾
                 </button>
                 <button 
                   class="cancel-btn"
                   @click="cancelEdit(item)"
+                  title="Отмена"
                 >
-                  ❌ Отмена
+                  ❌
                 </button>
               </div>
             </div>
@@ -105,20 +130,11 @@
         </div>
       </div>
 
-      <!-- Статистика -->
-      <div class="stats">
-        <div class="stat-item">
-          <span class="stat-label">Всего слов:</span>
-          <span class="stat-value">{{ words.length }}</span>
-        </div>
-        <div class="stat-item">
-          <span class="stat-label">Всего фраз:</span>
-          <span class="stat-value">{{ phrases.length }}</span>
-        </div>
-        <div class="stat-item">
-          <span class="stat-label">Всего записей:</span>
-          <span class="stat-value">{{ words.length + phrases.length }}</span>
-        </div>
+      <!-- Пагинация (если нужно) -->
+      <div v-if="filteredItems.length > 20" class="pagination">
+        <span class="pagination-info">
+          Показано {{ filteredItems.length }} из {{ (mode === 'word' ? words : phrases).length }}
+        </span>
       </div>
     </div>
 
@@ -126,7 +142,7 @@
     <div v-if="showDeleteModal" class="modal-overlay" @click="closeDeleteModal">
       <div class="modal" @click.stop>
         <h3>Подтверждение удаления</h3>
-        <p>Вы уверены, что хотите удалить "{{ itemToDelete ? (mode === 'word' ? itemToDelete.english_word : itemToDelete.english_phrase) : '' }}"?</p>
+        <p>Удалить "{{ itemToDelete ? (mode === 'word' ? itemToDelete.english_word : itemToDelete.english_phrase) : '' }}"?</p>
         <div class="modal-actions">
           <button class="cancel-btn" @click="closeDeleteModal">Отмена</button>
           <button class="delete-btn" @click="deleteItem">Удалить</button>
@@ -215,7 +231,7 @@ export default {
           if (this.mode === 'word') {
             item.english_word = item.editEnglish.trim()
           } else {
-            item.english_phrase = item.editRussian.trim()
+            item.english_phrase = item.editEnglish.trim()
           }
           item.russian_translation = item.editRussian.trim()
           
@@ -310,7 +326,7 @@ export default {
 }
 
 .container {
-  max-width: 1200px;
+  max-width: 1400px;
   margin: 0 auto;
   background: white;
   border-radius: 20px;
@@ -320,28 +336,27 @@ export default {
 
 .title {
   text-align: center;
-  color: #2d3748;
-  font-size: 2.5rem;
+  color: white;
+  font-size: 2.2rem;
   font-weight: 700;
   margin: 0;
-  padding: 40px 20px 20px;
+  padding: 30px 20px 20px;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
 }
 
 .toggle-container {
   display: flex;
   background: #f7fafc;
-  padding: 20px;
+  padding: 15px 20px;
   gap: 10px;
 }
 
 .toggle-btn {
   flex: 1;
-  padding: 15px 20px;
+  padding: 12px 20px;
   border: none;
-  border-radius: 12px;
-  font-size: 16px;
+  border-radius: 10px;
+  font-size: 14px;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.3s ease;
@@ -354,8 +369,8 @@ export default {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
   border-color: transparent;
-  transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.3);
 }
 
 .toggle-btn:hover:not(.active) {
@@ -363,18 +378,26 @@ export default {
   transform: translateY(-1px);
 }
 
-.search-container {
-  padding: 20px;
+.header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px 20px;
   background: #f7fafc;
   border-bottom: 1px solid #e2e8f0;
 }
 
+.search-container {
+  flex: 1;
+  max-width: 400px;
+}
+
 .search-input {
   width: 100%;
-  padding: 15px 20px;
+  padding: 10px 15px;
   border: 2px solid #e2e8f0;
-  border-radius: 12px;
-  font-size: 16px;
+  border-radius: 8px;
+  font-size: 14px;
   transition: all 0.3s ease;
   box-sizing: border-box;
 }
@@ -385,8 +408,29 @@ export default {
   box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
 }
 
-.dictionary-list {
-  padding: 20px;
+.stats-compact {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.stat-badge {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-weight: 700;
+  font-size: 16px;
+}
+
+.stat-label {
+  color: #718096;
+  font-size: 14px;
+}
+
+.table-container {
+  padding: 0;
+  overflow-x: auto;
 }
 
 .empty-state {
@@ -396,110 +440,109 @@ export default {
   padding: 40px;
 }
 
-.items-grid {
+.table {
+  width: 100%;
+  min-width: 800px;
+}
+
+.table-header {
   display: grid;
+  grid-template-columns: 2fr 0.5fr 2fr 1fr 1fr;
   gap: 15px;
-}
-
-.item-card {
-  background: white;
-  padding: 20px;
-  border-radius: 12px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-  transition: all 0.3s ease;
-  border: 1px solid #e2e8f0;
-}
-
-.item-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
-}
-
-.item-content {
-  display: flex;
-  flex-direction: column;
-  gap: 15px;
-}
-
-.item-main {
-  display: flex;
-  align-items: center;
-  gap: 15px;
-  font-size: 18px;
-}
-
-.english {
-  font-weight: 600;
-  color: #2d3748;
-}
-
-.arrow {
-  color: #718096;
-  font-weight: bold;
-  font-size: 20px;
-}
-
-.russian {
+  padding: 15px 20px;
+  background: #f8fafc;
+  border-bottom: 2px solid #e2e8f0;
   font-weight: 600;
   color: #4a5568;
+  font-size: 14px;
 }
 
-.item-meta {
-  display: flex;
-  justify-content: space-between;
+.table-row {
+  border-bottom: 1px solid #f1f5f9;
+  transition: all 0.2s ease;
+}
+
+.table-row:hover {
+  background: #f8fafc;
+}
+
+.row-content,
+.edit-row {
+  display: grid;
+  grid-template-columns: 2fr 0.5fr 2fr 1fr 1fr;
+  gap: 15px;
+  padding: 12px 20px;
   align-items: center;
 }
 
-.date {
-  font-size: 12px;
-  color: #a0aec0;
+.col-english,
+.col-russian {
+  min-width: 0;
 }
 
-.actions {
+.text-content {
+  font-size: 14px;
+  color: #2d3748;
+  font-weight: 500;
+  word-break: break-word;
+  line-height: 1.4;
+}
+
+.col-arrow {
+  text-align: center;
+  color: #a0aec0;
+  font-weight: bold;
+  font-size: 16px;
+}
+
+.col-date {
+  text-align: center;
+}
+
+.date-text {
+  font-size: 12px;
+  color: #a0aec0;
+  font-weight: 500;
+}
+
+.col-actions {
   display: flex;
-  gap: 8px;
+  gap: 6px;
+  justify-content: center;
 }
 
 .action-btn {
-  padding: 8px 12px;
+  padding: 6px 10px;
   border: none;
-  border-radius: 8px;
+  border-radius: 6px;
   cursor: pointer;
   transition: all 0.2s ease;
-  font-size: 16px;
+  font-size: 14px;
   background: #f7fafc;
+  border: 1px solid #e2e8f0;
 }
 
 .action-btn.edit:hover {
   background: #4299e1;
   color: white;
+  border-color: #4299e1;
 }
 
 .action-btn.delete:hover {
   background: #e53e3e;
   color: white;
+  border-color: #e53e3e;
 }
 
 /* Режим редактирования */
-.edit-form {
-  display: flex;
-  flex-direction: column;
-  gap: 15px;
-}
-
-.edit-inputs {
-  display: flex;
-  align-items: center;
-  gap: 15px;
-}
-
 .edit-input {
-  flex: 1;
-  padding: 12px 16px;
+  width: 100%;
+  padding: 8px 12px;
   border: 2px solid #e2e8f0;
-  border-radius: 8px;
-  font-size: 16px;
+  border-radius: 6px;
+  font-size: 14px;
   transition: all 0.3s ease;
+  box-sizing: border-box;
 }
 
 .edit-input:focus {
@@ -508,20 +551,15 @@ export default {
   box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
 }
 
-.edit-actions {
-  display: flex;
-  gap: 10px;
-}
-
 .save-btn,
 .cancel-btn {
-  padding: 10px 20px;
+  padding: 6px 10px;
   border: none;
-  border-radius: 8px;
+  border-radius: 6px;
   font-size: 14px;
-  font-weight: 600;
   cursor: pointer;
   transition: all 0.3s ease;
+  border: 1px solid transparent;
 }
 
 .save-btn {
@@ -549,30 +587,17 @@ export default {
   transform: translateY(-1px);
 }
 
-/* Статистика */
-.stats {
-  display: flex;
-  justify-content: space-around;
-  padding: 20px;
+/* Пагинация */
+.pagination {
+  padding: 15px 20px;
+  text-align: center;
   background: #f7fafc;
   border-top: 1px solid #e2e8f0;
 }
 
-.stat-item {
-  text-align: center;
-}
-
-.stat-label {
-  display: block;
-  font-size: 14px;
+.pagination-info {
   color: #718096;
-  margin-bottom: 5px;
-}
-
-.stat-value {
-  font-size: 24px;
-  font-weight: 700;
-  color: #2d3748;
+  font-size: 14px;
 }
 
 /* Модальное окно */
@@ -591,7 +616,7 @@ export default {
 
 .modal {
   background: white;
-  padding: 30px;
+  padding: 25px;
   border-radius: 12px;
   max-width: 400px;
   width: 90%;
@@ -634,7 +659,8 @@ export default {
   background: #c53030;
 }
 
-@media (max-width: 768px) {
+/* Адаптивность */
+@media (max-width: 1200px) {
   .container {
     margin: 10px;
     border-radius: 15px;
@@ -642,29 +668,72 @@ export default {
   
   .title {
     font-size: 2rem;
-    padding: 30px 15px 15px;
+    padding: 25px 15px 15px;
   }
   
-  .item-main {
-    flex-direction: column;
+  .table-header,
+  .row-content,
+  .edit-row {
+    grid-template-columns: 2fr 0.5fr 2fr 1fr 1fr;
     gap: 10px;
-    text-align: center;
+    padding: 10px 15px;
   }
   
-  .item-meta {
-    flex-direction: column;
-    gap: 10px;
-    align-items: center;
+  .text-content,
+  .edit-input {
+    font-size: 13px;
   }
   
-  .edit-inputs {
-    flex-direction: column;
-    gap: 10px;
+  .action-btn {
+    padding: 5px 8px;
+    font-size: 13px;
+  }
+}
+
+@media (max-width: 768px) {
+  .dictionary-view {
+    padding: 10px;
   }
   
-  .stats {
+  .header-row {
     flex-direction: column;
     gap: 15px;
+    align-items: stretch;
+  }
+  
+  .search-container {
+    max-width: none;
+  }
+  
+  .table-container {
+    overflow-x: auto;
+  }
+  
+  .table {
+    min-width: 600px;
+  }
+  
+  .table-header,
+  .row-content,
+  .edit-row {
+    grid-template-columns: 2fr 0.5fr 2fr 1fr 1fr;
+    gap: 8px;
+    padding: 8px 12px;
+  }
+  
+  .text-content,
+  .edit-input {
+    font-size: 12px;
+  }
+  
+  .action-btn {
+    padding: 4px 6px;
+    font-size: 12px;
+  }
+  
+  .col-actions {
+    gap: 4px;
   }
 }
 </style>
+сде
