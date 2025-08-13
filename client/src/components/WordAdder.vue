@@ -53,13 +53,43 @@
             <label :for="mode === 'word' ? 'russianWord' : 'russianPhrase'">
               {{ mode === 'word' ? 'Перевод слова' : 'Перевод фразы' }}
             </label>
-            <input
-              :id="mode === 'word' ? 'russianWord' : 'russianPhrase'"
-              v-model="russianInput"
-              type="text"
-              :placeholder="mode === 'word' ? 'Введите перевод...' : 'Введите перевод...'"
-              @keyup.enter="handleSubmit"
-            />
+            <div class="translation-input-container">
+              <input
+                :id="mode === 'word' ? 'russianWord' : 'russianPhrase'"
+                v-model="russianInput"
+                type="text"
+                :placeholder="mode === 'word' ? 'Введите перевод...' : 'Введите перевод...'"
+                @keyup.enter="handleSubmit"
+              />
+              <button 
+                v-if="!autoTranslationLoading && !autoTranslationDone"
+                type="button"
+                class="auto-translate-btn"
+                @click="getAutoTranslation"
+                :disabled="!englishInput.trim()"
+              >
+                <span class="translate-icon">🌐</span>
+                Автоперевод
+              </button>
+              <button 
+                v-if="autoTranslationLoading"
+                type="button"
+                class="auto-translate-btn loading"
+                disabled
+              >
+                <span class="loading-spinner"></span>
+                Перевод...
+              </button>
+              <button 
+                v-if="autoTranslationDone"
+                type="button"
+                class="auto-translate-btn success"
+                disabled
+              >
+                <span class="success-icon">✅</span>
+                Переведено
+              </button>
+            </div>
           </div>
           
           <button 
@@ -116,7 +146,10 @@ export default {
       message: '',
       messageType: 'success',
       items: [],
-      checkTimeout: null
+      checkTimeout: null,
+      autoTranslationLoading: false,
+      autoTranslationDone: false,
+      autoTranslationResult: null
     }
   },
   computed: {
@@ -133,6 +166,10 @@ export default {
       if (this.checkTimeout) {
         clearTimeout(this.checkTimeout)
       }
+
+      // Сбрасываем состояние автоперевода при изменении ввода
+      this.autoTranslationDone = false
+      this.autoTranslationResult = null
 
       // Устанавливаем новый таймаут для проверки через 500мс после остановки ввода
       this.checkTimeout = setTimeout(async () => {
@@ -249,6 +286,72 @@ export default {
       } catch (error) {
         return 'Неизвестная дата'
       }
+    },
+
+    async getAutoTranslation() {
+      if (!this.englishInput.trim()) {
+        this.showMessage('Введите английское слово для перевода', 'error')
+        return
+      }
+
+      this.autoTranslationLoading = true
+      this.autoTranslationDone = false
+      this.autoTranslationResult = null
+
+      try {
+        // Пробуем основной API (LibreTranslate)
+        const url = 'https://libretranslate.de/translate'
+        const body = {
+          q: this.englishInput,
+          source: 'en',
+          target: 'ru'
+        }
+
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(body)
+        })
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`)
+        }
+
+        const data = await response.json()
+        this.russianInput = data.translatedText
+        this.autoTranslationResult = data
+        this.autoTranslationDone = true
+        this.showMessage('Автоперевод завершен', 'success')
+      } catch (error) {
+        console.error('Ошибка при автопереводе через LibreTranslate:', error)
+        
+        // Пробуем альтернативный API
+        try {
+          const alternativeUrl = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(this.englishInput)}&langpair=en|ru`
+          
+          const altResponse = await fetch(alternativeUrl)
+          if (!altResponse.ok) {
+            throw new Error(`HTTP error! status: ${altResponse.status}`)
+          }
+          
+          const altData = await altResponse.json()
+          if (altData.responseData && altData.responseData.translatedText) {
+            this.russianInput = altData.responseData.translatedText
+            this.autoTranslationResult = altData
+            this.autoTranslationDone = true
+            this.showMessage('Автоперевод завершен (альтернативный API)', 'success')
+          } else {
+            throw new Error('Нет данных перевода')
+          }
+        } catch (altError) {
+          console.error('Ошибка при автопереводе через альтернативный API:', altError)
+          this.showMessage('Не удалось выполнить автоперевод. Введите перевод вручную.', 'error')
+        }
+      } finally {
+        this.autoTranslationLoading = false
+      }
     }
   },
   watch: {
@@ -257,6 +360,8 @@ export default {
       this.russianInput = ''
       this.existingTranslation = null
       this.message = ''
+      this.autoTranslationDone = false
+      this.autoTranslationResult = null
       this.loadItems()
     }
   }
@@ -515,6 +620,77 @@ export default {
 .item-date {
   font-size: 12px;
   color: #a0aec0;
+}
+
+.translation-input-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.translation-input-container input {
+  flex: 1;
+  padding-right: 120px; /* Место для кнопки */
+}
+
+.auto-translate-btn {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  padding: 8px 15px;
+  border: none;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  background: #4299e1;
+  color: white;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  z-index: 1;
+  white-space: nowrap;
+}
+
+.auto-translate-btn:hover:not(:disabled) {
+  background: #3182ce;
+  transform: translateY(-50%) scale(1.05);
+}
+
+.auto-translate-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.auto-translate-btn.loading {
+  background: #f6ad55;
+}
+
+.auto-translate-btn.success {
+  background: #48bb78;
+}
+
+.translate-icon,
+.loading-spinner,
+.success-icon {
+  font-size: 16px;
+}
+
+.loading-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid white;
+  border-top: 2px solid transparent;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }
 
 @media (max-width: 768px) {
