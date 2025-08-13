@@ -91,6 +91,27 @@
               </button>
             </div>
           </div>
+
+          <!-- Выпадающий список вариантов перевода -->
+          <div v-if="translationOptions.length > 1" class="translation-options">
+            <label class="options-label">Выберите вариант перевода:</label>
+            <div class="options-grid">
+              <div 
+                v-for="(option, index) in translationOptions" 
+                :key="index"
+                :class="['option-card', { selected: selectedTranslationIndex === index }]"
+                @click="selectTranslation(index)"
+              >
+                <div class="option-text">{{ option.text }}</div>
+                <div class="option-quality" v-if="option.quality">
+                  Качество: {{ option.quality }}%
+                </div>
+                <div class="option-source" v-if="option.source">
+                  Источник: {{ option.source }}
+                </div>
+              </div>
+            </div>
+          </div>
           
           <button 
             class="submit-btn"
@@ -149,7 +170,10 @@ export default {
       checkTimeout: null,
       autoTranslationLoading: false,
       autoTranslationDone: false,
-      autoTranslationResult: null
+      autoTranslationResult: null,
+      translationOptions: [], // Новый массив для вариантов перевода
+      selectedTranslationIndex: 0, // Индекс выбранного варианта
+      autoTranslateTimeout: null // Таймаут для автоперевода
     }
   },
   computed: {
@@ -159,6 +183,10 @@ export default {
   },
   mounted() {
     this.loadItems()
+    // Фокус на поле ввода английского языка при загрузке страницы
+    this.$nextTick(() => {
+      this.focusEnglishInput()
+    })
   },
   methods: {
     async checkExisting() {
@@ -167,9 +195,16 @@ export default {
         clearTimeout(this.checkTimeout)
       }
 
+      // Очищаем предыдущий таймаут автоперевода
+      if (this.autoTranslateTimeout) {
+        clearTimeout(this.autoTranslateTimeout)
+      }
+
       // Сбрасываем состояние автоперевода при изменении ввода
       this.autoTranslationDone = false
       this.autoTranslationResult = null
+      this.translationOptions = []
+      this.selectedTranslationIndex = 0
 
       // Устанавливаем новый таймаут для проверки через 500мс после остановки ввода
       this.checkTimeout = setTimeout(async () => {
@@ -196,6 +231,11 @@ export default {
             this.message = ''
           } else {
             this.existingTranslation = null
+            
+            // Автоматически запрашиваем перевод через 0.7 секунды
+            this.autoTranslateTimeout = setTimeout(() => {
+              this.getAutoTranslation()
+            }, 700)
           }
         } catch (error) {
           console.error('Ошибка при проверке:', error)
@@ -239,7 +279,16 @@ export default {
         this.englishInput = ''
         this.russianInput = ''
         this.existingTranslation = null
+        this.autoTranslationDone = false
+        this.autoTranslationResult = null
+        this.translationOptions = []
+        this.selectedTranslationIndex = 0
         this.loadItems()
+        
+        // Фокус на поле ввода английского языка после сохранения
+        this.$nextTick(() => {
+          this.focusEnglishInput()
+        })
       } catch (error) {
         console.error('Ошибка при добавлении:', error)
         this.showMessage(error.message || 'Ошибка при добавлении', 'error')
@@ -297,6 +346,8 @@ export default {
       this.autoTranslationLoading = true
       this.autoTranslationDone = false
       this.autoTranslationResult = null
+      this.translationOptions = [] // Очищаем варианты перевода
+      this.selectedTranslationIndex = 0 // Сбрасываем выбранный вариант
 
       try {
         // Пробуем основной API (LibreTranslate)
@@ -320,7 +371,16 @@ export default {
         }
 
         const data = await response.json()
-        this.russianInput = data.translatedText
+        
+        // LibreTranslate возвращает один вариант
+        const options = [{
+          text: data.translatedText,
+          quality: 100,
+          source: 'LibreTranslate'
+        }]
+        
+        this.updateTranslationOptions(options)
+        this.russianInput = options[0].text
         this.autoTranslationResult = data
         this.autoTranslationDone = true
         this.showMessage('Автоперевод завершен', 'success')
@@ -338,10 +398,42 @@ export default {
           
           const altData = await altResponse.json()
           if (altData.responseData && altData.responseData.translatedText) {
-            this.russianInput = altData.responseData.translatedText
+            // MyMemory API возвращает несколько вариантов
+            const options = []
+            
+            // Основной перевод
+            options.push({
+              text: altData.responseData.translatedText,
+              quality: 100,
+              source: 'MyMemory (основной)'
+            })
+            
+            // Дополнительные варианты из matches
+            if (altData.matches && altData.matches.length > 0) {
+              altData.matches.forEach(match => {
+                if (match.translation && match.translation !== altData.responseData.translatedText) {
+                  options.push({
+                    text: match.translation,
+                    quality: match.quality || 0,
+                    source: match['created-by'] || 'MyMemory'
+                  })
+                }
+              })
+            }
+            
+            // Сортируем по качеству (лучшие первые)
+            options.sort((a, b) => b.quality - a.quality)
+            
+            this.updateTranslationOptions(options)
+            this.russianInput = options[0].text
             this.autoTranslationResult = altData
             this.autoTranslationDone = true
-            this.showMessage('Автоперевод завершен (альтернативный API)', 'success')
+            
+            if (options.length > 1) {
+              this.showMessage(`Автоперевод завершен. Найдено ${options.length} вариантов.`, 'success')
+            } else {
+              this.showMessage('Автоперевод завершен (альтернативный API)', 'success')
+            }
           } else {
             throw new Error('Нет данных перевода')
           }
@@ -351,6 +443,28 @@ export default {
         }
       } finally {
         this.autoTranslationLoading = false
+      }
+    },
+
+    // Метод для обновления вариантов перевода
+    updateTranslationOptions(options) {
+      this.translationOptions = options
+      this.selectedTranslationIndex = 0 // Сбрасываем выбранный вариант при обновлении
+    },
+
+    // Метод для выбора варианта перевода
+    selectTranslation(index) {
+      this.selectedTranslationIndex = index
+      this.russianInput = this.translationOptions[index].text
+      this.autoTranslationDone = true // Считаем, что перевод выбран
+      this.showMessage('Выбран вариант перевода', 'success')
+    },
+
+    // Метод для фокуса на поле ввода английского языка
+    focusEnglishInput() {
+      const englishInputElement = this.$el.querySelector(`#${this.mode === 'word' ? 'englishWord' : 'englishPhrase'}`)
+      if (englishInputElement) {
+        englishInputElement.focus()
       }
     }
   },
@@ -362,7 +476,14 @@ export default {
       this.message = ''
       this.autoTranslationDone = false
       this.autoTranslationResult = null
+      this.translationOptions = []
+      this.selectedTranslationIndex = 0
       this.loadItems()
+      
+      // Фокус на поле ввода английского языка при смене режима
+      this.$nextTick(() => {
+        this.focusEnglishInput()
+      })
     }
   }
 }
@@ -693,6 +814,65 @@ export default {
   100% { transform: rotate(360deg); }
 }
 
+.translation-options {
+  margin-top: 20px;
+  padding: 15px 20px;
+  background: #edf2f7;
+  border-radius: 12px;
+  border: 1px solid #cbd5e0;
+}
+
+.options-label {
+  display: block;
+  margin-bottom: 10px;
+  font-weight: 600;
+  color: #2d3748;
+  font-size: 14px;
+}
+
+.options-grid {
+  display: grid;
+  gap: 10px;
+}
+
+.option-card {
+  background: white;
+  padding: 15px 20px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 1px solid #e2e8f0;
+}
+
+.option-card:hover {
+  background: #edf2f7;
+  border-color: #a0aec0;
+}
+
+.option-card.selected {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-color: transparent;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+}
+
+.option-card.selected .option-quality,
+.option-card.selected .option-source {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.option-text {
+  font-weight: 600;
+  font-size: 16px;
+}
+
+.option-quality,
+.option-source {
+  font-size: 12px;
+  color: #718096;
+}
+
 @media (max-width: 768px) {
   .container {
     margin: 10px;
@@ -712,6 +892,28 @@ export default {
   .translation-content {
     flex-direction: column;
     gap: 10px;
+  }
+
+  .translation-options {
+    margin-top: 15px;
+    padding: 12px 15px;
+  }
+
+  .options-grid {
+    gap: 8px;
+  }
+
+  .option-card {
+    padding: 12px 15px;
+  }
+
+  .option-text {
+    font-size: 14px;
+  }
+
+  .option-quality,
+  .option-source {
+    font-size: 11px;
   }
 }
 </style>
