@@ -181,12 +181,11 @@ $LAST_COMMIT_BODY
 
     # Используем Python для правильного формирования JSON
     if command -v python3 &> /dev/null; then
-        JSON_DATA=$(python3 <<PYEOF
-import json
-message = """$MESSAGE"""
-print(json.dumps({"massage": message}, ensure_ascii=False))
-PYEOF
-)
+        # Сохраняем сообщение во временный файл для надежной передачи
+        MSG_TMP=$(mktemp)
+        printf '%s' "$MESSAGE" > "$MSG_TMP"
+        JSON_DATA=$(python3 -c "import json; f=open('$MSG_TMP', 'r', encoding='utf-8'); msg=f.read(); f.close(); print(json.dumps({'massage': msg}, ensure_ascii=False))" 2>/dev/null)
+        rm -f "$MSG_TMP"
     else
         # Fallback: простое экранирование
         MESSAGE_ESCAPED=$(printf '%s' "$MESSAGE" | sed 's/\\/\\\\/g' | sed 's/"/\\"/g' | awk '{gsub(/\n/, "\\n"); print}')
