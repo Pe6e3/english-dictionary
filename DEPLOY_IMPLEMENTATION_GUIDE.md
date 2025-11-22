@@ -168,36 +168,46 @@ app.post('/api/deploy', (req, res) => {
   
   // Проверяем секретный ключ
   if (secret !== DEPLOY_SECRET) {
+    console.warn(`[${new Date().toISOString()}] Попытка деплоя с неверным секретным ключом.`);
     return res.status(401).json({ error: 'Неверный секретный ключ' });
   }
   
-  // Запускаем деплой в фоновом режиме
+  // Отправляем ответ сразу, не дожидаясь завершения деплоя
+  res.json({ 
+    success: true, 
+    message: 'Деплой запущен',
+    timestamp: new Date().toISOString()
+  });
+  
+  // Запускаем деплой в фоновом режиме (после отправки ответа)
+  // Используем nohup для запуска независимого процесса, который не умрет при перезапуске PM2
   const { exec } = require('child_process');
   const deployScript = '/var/www/your-project/auto-deploy.sh';
+  const logFile = '/var/log/pm2/deploy.log';
   
-  exec(`bash ${deployScript}`, (error, stdout, stderr) => {
+  console.log(`[${new Date().toISOString()}] Запуск деплоя через webhook...`);
+  
+  // Добавляем задержку перед запуском деплоя, чтобы дать время GitHub синхронизировать изменения
+  // Запускаем через nohup в фоне с задержкой, перенаправляя вывод в лог
+  const DELAY_SECONDS = 10; // Задержка для синхронизации изменений в GitHub
+  const command = `(sleep ${DELAY_SECONDS} && bash ${deployScript}) >> ${logFile} 2>&1 &`;
+  
+  exec(command, (error) => {
     if (error) {
-      console.error('Ошибка деплоя:', error);
-      return res.status(500).json({ 
-        success: false, 
-        error: 'Ошибка при выполнении деплоя',
-        message: error.message 
-      });
+      console.error(`[${new Date().toISOString()}] Ошибка запуска деплоя:`, error);
+      return;
     }
-    
-    res.json({ 
-      success: true, 
-      message: 'Деплой запущен',
-      output: stdout 
-    });
+    console.log(`[${new Date().toISOString()}] Деплой запланирован (запуск через ${DELAY_SECONDS} секунд). Логи: ${logFile}`);
   });
 });
 ```
 
 **Важные детали:**
 - Секретный ключ хранится в переменной окружения `DEPLOY_SECRET`
-- Скрипт запускается асинхронно через `exec()`
-- Ответ отправляется сразу, не дожидаясь завершения деплоя
+- Ответ отправляется **сразу**, не дожидаясь завершения деплоя (предотвращает таймауты nginx)
+- Скрипт запускается через `nohup` в фоновом режиме с задержкой 10 секунд
+- Задержка необходима для синхронизации изменений в GitHub перед запуском деплоя
+- Все логи сохраняются в `/var/log/pm2/deploy.log`
 - Ошибки логируются в консоль сервера
 
 ### 3. Скрипт автоматического деплоя
@@ -257,17 +267,68 @@ update_code() {
     log_info "🔄 Обновление кода из репозитория..."
     
     cd "$PROJECT_DIR"
+    
+    # Сохраняем текущую ветку
     CURRENT_BRANCH=$(git branch --show-current)
     
-    git fetch origin
-    git pull origin "$CURRENT_BRANCH" || {
-        log_error "Ошибка при обновлении кода"
-        exit 1
-    }
+    # Получаем информацию о текущем состоянии
+    OLD_COMMIT=$(git log -1 --format="%h")
+    log_info "Текущий коммит: $OLD_COMMIT"
     
-    log_success "✅ Код обновлен"
+    # Обновляем код с повторными попытками (на случай если изменения еще не синхронизировались)
+    MAX_RETRIES=5
+    RETRY_DELAY=5
+    RETRY_COUNT=0
+    FETCH_SUCCESS=false
+    
+    while [ $RETRY_COUNT -lt $MAX_RETRIES ] && [ "$FETCH_SUCCESS" = false ]; do
+        log_info "Попытка fetch (попытка $((RETRY_COUNT + 1))/$MAX_RETRIES)..."
+        
+        if git fetch origin; then
+            FETCH_SUCCESS=true
+            log_success "✅ Fetch выполнен успешно"
+        else
+            RETRY_COUNT=$((RETRY_COUNT + 1))
+            if [ $RETRY_COUNT -lt $MAX_RETRIES ]; then
+                log_warn "⚠️  Fetch не удался, повтор через ${RETRY_DELAY} секунд..."
+                sleep $RETRY_DELAY
+            else
+                log_error "Ошибка при fetch после $MAX_RETRIES попыток"
+                exit 1
+            fi
+        fi
+    done
+    
+    # Всегда выполняем pull для гарантии актуальности
+    # Проверяем, есть ли новые коммиты для информативности
+    NEW_COMMITS=$(git log HEAD..origin/"$CURRENT_BRANCH" --oneline 2>/dev/null | wc -l)
+    if [ "$NEW_COMMITS" -gt 0 ]; then
+        log_info "Найдено новых коммитов: $NEW_COMMITS"
+    else
+        log_info "Новых коммитов не обнаружено, но выполняем pull для гарантии..."
+    fi
+    
+    # Всегда делаем pull, чтобы гарантировать актуальность кода
+    log_info "Выполняем git pull..."
+    if git pull origin "$CURRENT_BRANCH"; then
+        NEW_COMMIT=$(git log -1 --format="%h")
+        if [ "$OLD_COMMIT" != "$NEW_COMMIT" ]; then
+            log_success "✅ Код обновлен: $OLD_COMMIT → $NEW_COMMIT"
+        else
+            log_success "✅ Код актуален (коммит: $OLD_COMMIT)"
+        fi
+    else
+        log_error "❌ Ошибка при pull"
+        exit 1
+    fi
 }
 ```
+
+**Ключевые особенности:**
+- Retry логика для `git fetch` (до 5 попыток с задержкой 5 секунд)
+- Всегда выполняется `git pull`, даже если новых коммитов не обнаружено
+- Детальное логирование процесса обновления
+- Сравнение коммитов до и после обновления
 
 **Деплой сервера:**
 ```bash
@@ -279,12 +340,12 @@ deploy_server() {
     # Установка зависимостей
     if [ -f "package.json" ]; then
         log_info "Установка зависимостей сервера..."
-        npm install --legacy-peer-deps --production --silent
+        npm install --legacy-peer-deps --production --silent 2>&1 | grep -E "(added|removed|changed)" || true
         log_success "✅ Зависимости установлены"
     fi
     
     # Перезапуск через PM2
-    log_info "Перезапуск PM2 процесса..."
+    log_info "Перезапуск PM2 процесса 'your-process-name'..."
     if pm2 list | grep -q "your-process-name"; then
         pm2 restart your-process-name --update-env
         log_success "✅ Сервер перезапущен"
@@ -293,6 +354,77 @@ deploy_server() {
         pm2 start "$PROJECT_DIR/server/ecosystem.config.js"
         pm2 save
         log_success "✅ Сервер запущен"
+    fi
+    
+    # Показываем статус PM2
+    echo ""
+    log_info "📊 Статус PM2 процесса 'your-process-name':"
+    pm2 info your-process-name 2>/dev/null | head -20 || true
+    echo ""
+}
+```
+
+**Деплой клиента (для проектов с фронтендом):**
+```bash
+deploy_client() {
+    log_info "🔄 Деплой клиента..."
+    
+    cd "$PROJECT_DIR/client"
+    
+    # Установка зависимостей
+    if [ -f "package.json" ]; then
+        log_info "Установка зависимостей клиента..."
+        # Убеждаемся, что devDependencies будут установлены
+        export NODE_ENV=development
+        # Устанавливаем зависимости (включая devDependencies)
+        npm install --legacy-peer-deps 2>&1 | grep -E "(added|removed|changed|up to date|audited|vite)" || true
+        
+        # Проверяем, что vite установлен (для проектов с Vite)
+        if [ ! -f "node_modules/.bin/vite" ] && [ ! -f "node_modules/vite/bin/vite.js" ]; then
+            log_warn "⚠️  vite не найден, переустанавливаем все зависимости..."
+            rm -rf node_modules package-lock.json
+            npm install --legacy-peer-deps 2>&1 | tail -15 || true
+        fi
+        
+        # Убеждаемся, что PATH содержит node_modules/.bin
+        if [ -d "node_modules/.bin" ]; then
+            export PATH="$PWD/node_modules/.bin:$PATH"
+            log_info "PATH обновлен для node_modules/.bin"
+        fi
+        
+        # Сборка проекта
+        if grep -q "\"build\"" package.json; then
+            log_info "Сборка клиента..."
+            # Убеждаемся, что PATH содержит node_modules/.bin
+            export PATH="$PWD/node_modules/.bin:$PATH"
+            
+            # Проверяем наличие vite перед сборкой
+            if [ ! -f "node_modules/.bin/vite" ] && [ ! -f "node_modules/vite/bin/vite.js" ]; then
+                log_error "❌ vite не найден после установки зависимостей"
+                exit 1
+            fi
+            
+            # Выполняем сборку с явным указанием пути к vite
+            if [ -f "node_modules/.bin/vite" ]; then
+                BUILD_OUTPUT=$(./node_modules/.bin/vite build 2>&1)
+            elif [ -f "node_modules/vite/bin/vite.js" ]; then
+                BUILD_OUTPUT=$(node node_modules/vite/bin/vite.js build 2>&1)
+            else
+                BUILD_OUTPUT=$(npm run build 2>&1)
+            fi
+            
+            BUILD_EXIT_CODE=$?
+            
+            if [ $BUILD_EXIT_CODE -eq 0 ]; then
+                log_success "✅ Клиент собран"
+                # Показываем краткую информацию о сборке
+                echo "$BUILD_OUTPUT" | grep -E "(built|dist|assets|✓|transformed)" | head -5 || true
+            else
+                log_error "❌ Ошибка сборки клиента (код: $BUILD_EXIT_CODE)"
+                echo "$BUILD_OUTPUT" | tail -30
+                exit 1
+            fi
+        fi
     fi
 }
 ```
@@ -342,18 +474,17 @@ send_deploy_notification() {
     SERVER_IP=$(hostname -I | awk '{print $1}')
     DEPLOY_TIME=$(date '+%Y-%m-%d %H:%M:%S')
     
-    # Формируем сообщение
-    MESSAGE="Деплой проекта произведён успешно!
+    # Формируем сообщение (используем короткий хеш коммита и форматирование)
+    MESSAGE="Деплой English произведён успешно!
 
 📦 Информация о версии:
-• Коммит: $LAST_COMMIT_SHORT ($LAST_COMMIT)
-• Сообщение: $LAST_COMMIT_MSG
+• Коммит: $LAST_COMMIT_SHORT
 • Автор: $LAST_COMMIT_AUTHOR
 • Дата коммита: $LAST_COMMIT_DATE
 • Ветка: $CURRENT_BRANCH
 
 📝 Текст последнего коммита:
-$LAST_COMMIT_BODY
+<b>$LAST_COMMIT_BODY</b>
 
 🖥️ Информация о сервере:
 • Хост: $SERVER_HOSTNAME
@@ -530,35 +661,50 @@ const DEPLOY_SECRET = process.env.DEPLOY_SECRET || 'your-secret-key-change-me';
 app.post('/api/deploy', (req, res) => {
   const { secret } = req.body;
   
+  // Проверяем секретный ключ
   if (secret !== DEPLOY_SECRET) {
+    console.warn(`[${new Date().toISOString()}] Попытка деплоя с неверным секретным ключом.`);
     return res.status(401).json({ error: 'Неверный секретный ключ' });
   }
   
+  // Отправляем ответ сразу, не дожидаясь завершения деплоя
+  res.json({ 
+    success: true, 
+    message: 'Деплой запущен',
+    timestamp: new Date().toISOString()
+  });
+  
+  // Запускаем деплой в фоновом режиме (после отправки ответа)
+  // Используем nohup для запуска независимого процесса
   const { exec } = require('child_process');
   const deployScript = '/var/www/your-project/auto-deploy.sh';
+  const logFile = '/var/log/pm2/deploy.log';
   
-  exec(`bash ${deployScript}`, (error, stdout, stderr) => {
+  console.log(`[${new Date().toISOString()}] Запуск деплоя через webhook...`);
+  
+  // Добавляем задержку перед запуском деплоя, чтобы дать время GitHub синхронизировать изменения
+  const DELAY_SECONDS = 10; // Задержка для синхронизации изменений в GitHub
+  const command = `(sleep ${DELAY_SECONDS} && bash ${deployScript}) >> ${logFile} 2>&1 &`;
+  
+  exec(command, (error) => {
     if (error) {
-      console.error('Ошибка деплоя:', error);
-      return res.status(500).json({ 
-        success: false, 
-        error: 'Ошибка при выполнении деплоя',
-        message: error.message 
-      });
+      console.error(`[${new Date().toISOString()}] Ошибка запуска деплоя:`, error);
+      return;
     }
-    
-    res.json({ 
-      success: true, 
-      message: 'Деплой запущен',
-      output: stdout 
-    });
+    console.log(`[${new Date().toISOString()}] Деплой запланирован (запуск через ${DELAY_SECONDS} секунд). Логи: ${logFile}`);
   });
 });
 ```
 
+**Важные детали:**
+- Ответ отправляется **сразу**, не дожидаясь завершения деплоя (предотвращает таймауты nginx)
+- Скрипт запускается через `nohup` в фоновом режиме с задержкой 10 секунд
+- Задержка необходима для синхронизации изменений в GitHub перед запуском деплоя
+- Все логи сохраняются в `/var/log/pm2/deploy.log`
+
 2. **Перезапустите сервер:**
 ```bash
-pm2 restart your-process-name
+pm2 restart your-process-name --update-env
 ```
 
 ### Шаг 5: Генерация секретного ключа
@@ -737,14 +883,18 @@ send_deploy_notification() {
 1. Проверьте права на выполнение: `chmod +x auto-deploy.sh`
 2. Проверьте путь к скрипту в webhook endpoint
 3. Проверьте логи сервера: `pm2 logs`
+4. Проверьте логи деплоя: `tail -f /var/log/pm2/deploy.log`
+5. Убедитесь, что скрипт запускается через `nohup` и не завершается преждевременно
 
 ### Проблема: Уведомление не отправляется
 
 **Решение:**
 1. Проверьте URL API уведомлений
 2. Проверьте формат JSON (используйте Python для проверки)
-3. Проверьте логи скрипта деплоя
+3. Проверьте логи скрипта деплоя: `tail -f /var/log/pm2/deploy.log`
 4. Убедитесь, что `curl` доступен на сервере
+5. Проверьте, что скрипт завершается успешно (уведомление отправляется в конце)
+6. Убедитесь, что Python3 установлен для форматирования JSON
 
 ### Проблема: PM2 процесс не перезапускается
 
@@ -820,6 +970,19 @@ send_deploy_notification() {
 
 ---
 
-**Версия документации:** 1.0  
+**Версия документации:** 2.0  
 **Последнее обновление:** 2025-11-22
+
+## 🔄 Изменения в версии 2.0
+
+- ✅ Добавлена задержка 10 секунд перед запуском деплоя для синхронизации изменений в GitHub
+- ✅ Реализована retry логика для `git fetch` (до 5 попыток)
+- ✅ Всегда выполняется `git pull` для гарантии актуальности кода
+- ✅ Улучшена установка зависимостей клиента (включая devDependencies)
+- ✅ Исправлена сборка клиента с явным вызовом vite
+- ✅ Улучшена обработка ошибок при сборке
+- ✅ Webhook отвечает сразу, не дожидаясь завершения деплоя
+- ✅ Использование `nohup` для запуска независимого процесса деплоя
+- ✅ Все логи сохраняются в `/var/log/pm2/deploy.log`
+- ✅ Улучшено форматирование уведомлений (короткий хеш коммита, HTML теги)
 
