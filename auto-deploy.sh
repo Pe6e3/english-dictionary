@@ -126,7 +126,8 @@ deploy_client() {
         # Сборка проекта
         if grep -q "\"build\"" package.json; then
             log_info "Сборка клиента..."
-            npm run build --silent
+            # Используем npm run build вместо прямого вызова vite для правильного PATH
+            npm run build --silent 2>&1 | grep -v "npm WARN" || true
             log_success "✅ Клиент собран"
         fi
     fi

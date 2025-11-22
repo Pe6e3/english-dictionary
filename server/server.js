@@ -269,52 +269,22 @@ app.post('/api/deploy', (req, res) => {
   });
   
   // Запускаем деплой в фоновом режиме (после отправки ответа)
-  const { spawn } = require('child_process');
+  // Используем nohup для запуска независимого процесса, который не умрет при перезапуске PM2
+  const { exec } = require('child_process');
   const deployScript = '/var/www/english/auto-deploy.sh';
+  const logFile = '/var/log/pm2/deploy.log';
   
   console.log(`[${new Date().toISOString()}] Запуск деплоя через webhook...`);
   
-  // Используем spawn вместо exec для лучшей обработки потоков
-  const deployProcess = spawn('bash', [deployScript], {
-    cwd: '/var/www/english',
-    env: process.env,
-    stdio: ['ignore', 'pipe', 'pipe'],
-    detached: true
-  });
+  // Запускаем через nohup в фоне, перенаправляя вывод в лог
+  const command = `nohup bash ${deployScript} >> ${logFile} 2>&1 &`;
   
-  // Отсоединяем процесс, чтобы он работал в фоне
-  deployProcess.unref();
-  
-  // Логируем вывод в реальном времени
-  deployProcess.stdout.on('data', (data) => {
-    const lines = data.toString().split('\n');
-    lines.forEach(line => {
-      if (line.trim()) {
-        console.log(`[DEPLOY] ${line}`);
-      }
-    });
-  });
-  
-  deployProcess.stderr.on('data', (data) => {
-    const lines = data.toString().split('\n');
-    lines.forEach(line => {
-      if (line.trim()) {
-        console.error(`[DEPLOY ERROR] ${line}`);
-      }
-    });
-  });
-  
-  deployProcess.on('close', (code) => {
-    const timestamp = new Date().toISOString();
-    if (code === 0) {
-      console.log(`[${timestamp}] Деплой завершен успешно (код: ${code})`);
-    } else {
-      console.error(`[${timestamp}] Деплой завершен с ошибкой (код: ${code})`);
+  exec(command, (error) => {
+    if (error) {
+      console.error(`[${new Date().toISOString()}] Ошибка запуска деплоя:`, error);
+      return;
     }
-  });
-  
-  deployProcess.on('error', (error) => {
-    console.error(`[${new Date().toISOString()}] Ошибка запуска деплоя:`, error);
+    console.log(`[${new Date().toISOString()}] Деплой запущен в фоне. Логи: ${logFile}`);
   });
 });
 
