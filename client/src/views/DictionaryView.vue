@@ -17,187 +17,87 @@
         </div>
       </div>
 
-      <!-- Таблица слов/фраз -->
-      <div class="table-container">
+      <!-- Карточки переводов -->
+      <div class="translations-container">
         <div v-if="filteredItems.length === 0" class="empty-state">
           {{ searchQuery ? 'Ничего не найдено' : 'Пока ничего не добавлено' }}
         </div>
-        <div v-else>
-          <!-- Десктопная таблица -->
-          <div class="table desktop-table">
-            <!-- Заголовок таблицы -->
-            <div class="table-header">
-              <div class="col-english">Английский</div>
-              <div class="col-arrow">→</div>
-              <div class="col-russian">Русский перевод</div>
-              <div class="col-date">Дата</div>
-              <div class="col-actions">Действия</div>
-            </div>
-            
-            <!-- Строки таблицы -->
-            <div 
-              v-for="item in filteredItems" 
-              :key="item.id" 
-              class="table-row"
-            >
-              <!-- Режим просмотра -->
-              <div v-if="!item.editing" class="row-content">
-                <div class="col-english">
-                  <span class="text-content">{{ item.english_text }}</span>
-                </div>
-                <div class="col-arrow">→</div>
-                <div class="col-russian">
-                  <span class="text-content">{{ item.russian_translation }}</span>
-                </div>
-                <div class="col-date">
-                  <span class="date-text">{{ formatDate(item.created_at) }}</span>
-                </div>
-                <div class="col-actions">
+        <div v-else class="items-grid">
+          <div 
+            v-for="item in filteredItems" 
+            :key="item.id" 
+            class="item-card"
+            @click="toggleTranslation(item)"
+          >
+            <!-- Режим просмотра -->
+            <div v-if="!item.editing" class="item-content-wrapper">
+              <div class="item-content">
+                <span class="english">{{ item.english_text }}</span>
+                <span class="arrow">→</span>
+                <span 
+                  class="russian"
+                  :class="{ 'visible': item.showTranslation }"
+                >
+                  {{ item.russian_translation }}
+                </span>
+              </div>
+              <div class="item-footer">
+                <span class="item-date">{{ formatDate(item.created_at) }}</span>
+                <div class="item-actions" @click.stop>
                   <button 
-                    class="action-btn edit"
-                    @click="startEdit(item)"
+                    class="item-action-btn edit"
+                    @click.stop="startEdit(item)"
                     title="Редактировать"
                   >
                     ✏️
                   </button>
                   <button 
-                    class="action-btn delete"
-                    @click="confirmDelete(item)"
+                    class="item-action-btn delete"
+                    @click.stop="confirmDelete(item)"
                     title="Удалить"
                   >
                     🗑️
                   </button>
                 </div>
               </div>
+            </div>
 
-              <!-- Режим редактирования -->
-              <div v-else class="edit-row">
-                <div class="col-english">
+            <!-- Режим редактирования -->
+            <div v-else class="item-edit" @click.stop>
+              <div class="item-edit-inputs">
+                <div class="item-edit-group">
+                  <label class="item-edit-label">Английский текст</label>
                   <input
                     v-model="item.editEnglish"
                     type="text"
-                    class="edit-input"
+                    class="item-edit-input"
                     placeholder="Английский текст"
                   />
                 </div>
-                <div class="col-arrow">→</div>
-                <div class="col-russian">
+                <div class="item-edit-group">
+                  <label class="item-edit-label">Русский перевод</label>
                   <input
                     v-model="item.editRussian"
                     type="text"
-                    class="edit-input"
-                    placeholder="Перевод"
+                    class="item-edit-input"
+                    placeholder="Русский перевод"
                   />
                 </div>
-                <div class="col-date">
-                  <span class="date-text">{{ formatDate(item.created_at) }}</span>
-                </div>
-                <div class="col-actions">
-                  <button 
-                    class="save-btn"
-                    @click="saveEdit(item)"
-                    :disabled="!item.editEnglish.trim() || !item.editRussian.trim()"
-                    title="Сохранить"
-                  >
-                    💾
-                  </button>
-                  <button 
-                    class="cancel-btn"
-                    @click="cancelEdit(item)"
-                    title="Отмена"
-                  >
-                    ❌
-                  </button>
-                </div>
               </div>
-            </div>
-          </div>
-
-          <!-- Мобильные карточки -->
-          <div class="mobile-cards">
-            <div 
-              v-for="item in filteredItems" 
-              :key="item.id" 
-              class="mobile-card"
-            >
-              <!-- Режим просмотра -->
-              <div v-if="!item.editing" class="card-content">
-                <div 
-                  class="card-main"
-                  @mousedown="showTranslation(item)"
-                  @mouseup="hideTranslation(item)"
-                  @touchstart="showTranslation(item)"
-                  @touchend="hideTranslation(item)"
-                  @mouseleave="hideTranslation(item)"
+              <div class="item-edit-actions">
+                <button 
+                  class="save-btn"
+                  @click="saveEdit(item)"
+                  :disabled="!item.editEnglish.trim() || !item.editRussian.trim()"
                 >
-                  <div class="card-english">
-                    <span class="card-text">{{ item.english_text }}</span>
-                  </div>
-                  <div 
-                    class="card-russian"
-                    :class="{ 'visible': item.showTranslation }"
-                  >
-                    <span class="card-text">{{ item.russian_translation }}</span>
-                  </div>
-                </div>
-                <div class="card-footer">
-                  <span class="card-date">{{ formatDate(item.created_at) }}</span>
-                  <div class="card-actions">
-                    <button 
-                      class="action-btn edit"
-                      @click.stop="startEdit(item)"
-                      title="Редактировать"
-                    >
-                      ✏️
-                    </button>
-                    <button 
-                      class="action-btn delete"
-                      @click.stop="confirmDelete(item)"
-                      title="Удалить"
-                    >
-                      🗑️
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Режим редактирования -->
-              <div v-else class="card-edit">
-                <div class="card-edit-inputs">
-                  <div class="card-edit-group">
-                    <label class="card-edit-label">Английский текст</label>
-                    <input
-                      v-model="item.editEnglish"
-                      type="text"
-                      class="card-edit-input"
-                      placeholder="Английский текст"
-                    />
-                  </div>
-                  <div class="card-edit-group">
-                    <label class="card-edit-label">Перевод</label>
-                    <input
-                      v-model="item.editRussian"
-                      type="text"
-                      class="card-edit-input"
-                      placeholder="Перевод"
-                    />
-                  </div>
-                </div>
-                <div class="card-edit-actions">
-                  <button 
-                    class="save-btn"
-                    @click="saveEdit(item)"
-                    :disabled="!item.editEnglish.trim() || !item.editRussian.trim()"
-                  >
-                    💾 Сохранить
-                  </button>
-                  <button 
-                    class="cancel-btn"
-                    @click="cancelEdit(item)"
-                  >
-                    ❌ Отмена
-                  </button>
-                </div>
+                  💾 Сохранить
+                </button>
+                <button 
+                  class="cancel-btn"
+                  @click="cancelEdit(item)"
+                >
+                  ❌ Отмена
+                </button>
               </div>
             </div>
           </div>
@@ -283,12 +183,10 @@ export default {
       }
     },
 
-    showTranslation(item) {
-      this.showTranslationMap[item.id] = true
-    },
-    
-    hideTranslation(item) {
-      this.showTranslationMap[item.id] = false
+    toggleTranslation(item) {
+      if (!item.editing) {
+        this.showTranslationMap[item.id] = !this.showTranslationMap[item.id]
+      }
     },
     
     startEdit(item) {
@@ -458,9 +356,8 @@ export default {
   font-size: 14px;
 }
 
-.table-container {
-  padding: 0;
-  overflow-x: auto;
+.translations-container {
+  padding: 20px;
 }
 
 .empty-state {
@@ -470,84 +367,81 @@ export default {
   padding: 40px;
 }
 
-.table {
-  width: 100%;
-  min-width: 800px;
-}
-
-/* Мобильные карточки - скрыты по умолчанию */
-.mobile-cards {
-  display: none;
-}
-
-.table-header {
+.items-grid {
   display: grid;
-  grid-template-columns: 2fr 0.5fr 2fr 1fr 1fr;
   gap: 15px;
-  padding: 15px 20px;
-  background: #f8fafc;
-  border-bottom: 2px solid #e2e8f0;
-  font-weight: 600;
-  color: #4a5568;
-  font-size: 14px;
 }
 
-.table-row {
-  border-bottom: 1px solid #f1f5f9;
-  transition: all 0.2s ease;
+.item-card {
+  background: white;
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+  transition: all 0.3s ease;
+  cursor: pointer;
 }
 
-.table-row:hover {
-  background: #f8fafc;
+.item-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
 }
 
-.row-content,
-.edit-row {
-  display: grid;
-  grid-template-columns: 2fr 0.5fr 2fr 1fr 1fr;
-  gap: 15px;
-  padding: 12px 20px;
+.item-content-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.item-content {
+  display: flex;
   align-items: center;
-}
-
-.col-english,
-.col-russian {
-  min-width: 0;
-}
-
-.text-content {
-  font-size: 14px;
-  color: #2d3748;
-  font-weight: 500;
-  word-break: break-word;
-  line-height: 1.4;
-}
-
-.col-arrow {
-  text-align: center;
-  color: #a0aec0;
-  font-weight: bold;
+  gap: 15px;
   font-size: 16px;
 }
 
-.col-date {
-  text-align: center;
+.item-content .english {
+  font-weight: 600;
+  color: #2d3748;
 }
 
-.date-text {
+.item-content .arrow {
+  color: #718096;
+  font-weight: bold;
+}
+
+.item-content .russian {
+  font-weight: 600;
+  color: #4a5568;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.2s ease, visibility 0.2s ease;
+}
+
+.item-content .russian.visible {
+  opacity: 1;
+  visibility: visible;
+}
+
+.item-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 10px;
+  border-top: 1px solid #f1f5f9;
+}
+
+.item-date {
   font-size: 12px;
   color: #a0aec0;
-  font-weight: 500;
 }
 
-.col-actions {
+.item-actions {
   display: flex;
   gap: 6px;
-  justify-content: center;
 }
 
-.action-btn {
-  padding: 6px 10px;
+.item-action-btn {
+  padding: 4px 8px;
   border: none;
   border-radius: 6px;
   cursor: pointer;
@@ -555,22 +449,51 @@ export default {
   font-size: 14px;
   background: #f7fafc;
   border: 1px solid #e2e8f0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  height: 28px;
 }
 
-.action-btn.edit:hover {
+.item-action-btn.edit:hover {
   background: #4299e1;
   color: white;
   border-color: #4299e1;
 }
 
-.action-btn.delete:hover {
+.item-action-btn.delete:hover {
   background: #e53e3e;
   color: white;
   border-color: #e53e3e;
 }
 
 /* Режим редактирования */
-.edit-input {
+.item-edit {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.item-edit-inputs {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.item-edit-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.item-edit-label {
+  font-size: 12px;
+  color: #718096;
+  font-weight: 600;
+}
+
+.item-edit-input {
   width: 100%;
   padding: 8px 12px;
   border: 2px solid #e2e8f0;
@@ -580,18 +503,25 @@ export default {
   box-sizing: border-box;
 }
 
-.edit-input:focus {
+.item-edit-input:focus {
   outline: none;
   border-color: #667eea;
   box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
 }
 
+.item-edit-actions {
+  display: flex;
+  gap: 10px;
+}
+
 .save-btn,
 .cancel-btn {
-  padding: 6px 10px;
+  flex: 1;
+  padding: 10px 15px;
   border: none;
-  border-radius: 6px;
+  border-radius: 8px;
   font-size: 14px;
+  font-weight: 600;
   cursor: pointer;
   transition: all 0.3s ease;
   border: 1px solid transparent;
@@ -695,177 +625,25 @@ export default {
 }
 
 /* Адаптивность */
-@media (max-width: 1200px) {
-  .container {
-    margin: 10px;
-    border-radius: 15px;
+@media (max-width: 768px) {
+  .translations-container {
+    padding: 15px;
   }
   
-  .table-header,
-  .row-content,
-  .edit-row {
-    grid-template-columns: 2fr 0.5fr 2fr 1fr 1fr;
-    gap: 10px;
-    padding: 10px 15px;
+  .item-card {
+    padding: 16px;
   }
   
-  .text-content,
-  .edit-input {
-    font-size: 13px;
+  .item-content {
+    font-size: 15px;
+    gap: 12px;
   }
   
-  .action-btn {
-    padding: 5px 8px;
-    font-size: 13px;
+  .item-action-btn {
+    min-width: 32px;
+    height: 32px;
+    font-size: 16px;
   }
-}
-
-/* Стили для мобильных карточек */
-.mobile-card {
-  background: white;
-  border-radius: 12px;
-  margin-bottom: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-  overflow: hidden;
-  transition: all 0.2s ease;
-}
-
-.mobile-card:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
-}
-
-.card-content {
-  padding: 16px;
-}
-
-.card-main {
-  margin-bottom: 12px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-  cursor: pointer;
-  user-select: none;
-  -webkit-user-select: none;
-  -moz-user-select: none;
-  -ms-user-select: none;
-  min-height: 60px;
-  padding: 8px;
-  border-radius: 8px;
-  transition: background-color 0.2s ease;
-}
-
-.card-main:active {
-  background-color: rgba(102, 126, 234, 0.1);
-}
-
-.card-english {
-  flex: 1;
-  display: flex;
-  align-items: center;
-}
-
-.card-russian {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  opacity: 0;
-  visibility: hidden;
-  transition: opacity 0.2s ease, visibility 0.2s ease;
-}
-
-.card-russian.visible {
-  opacity: 1;
-  visibility: visible;
-}
-
-.card-text {
-  font-size: 16px;
-  color: #2d3748;
-  font-weight: 600;
-  word-break: break-word;
-  line-height: 1.4;
-}
-
-.card-footer {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding-top: 12px;
-  border-top: 1px solid #f1f5f9;
-}
-
-.card-date {
-  font-size: 12px;
-  color: #a0aec0;
-  font-weight: 500;
-}
-
-.card-actions {
-  display: flex;
-  gap: 8px;
-}
-
-.card-actions .action-btn {
-  padding: 8px 12px;
-  font-size: 16px;
-  min-width: 44px;
-  min-height: 44px;
-}
-
-/* Режим редактирования в карточке */
-.card-edit {
-  padding: 16px;
-}
-
-.card-edit-inputs {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  margin-bottom: 16px;
-}
-
-.card-edit-group {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.card-edit-label {
-  font-size: 12px;
-  color: #718096;
-  font-weight: 600;
-}
-
-.card-edit-input {
-  width: 100%;
-  padding: 12px;
-  border: 2px solid #e2e8f0;
-  border-radius: 8px;
-  font-size: 16px;
-  transition: all 0.3s ease;
-  box-sizing: border-box;
-}
-
-.card-edit-input:focus {
-  outline: none;
-  border-color: #667eea;
-  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-}
-
-.card-edit-actions {
-  display: flex;
-  gap: 10px;
-}
-
-.card-edit-actions .save-btn,
-.card-edit-actions .cancel-btn {
-  flex: 1;
-  padding: 12px;
-  font-size: 14px;
-  font-weight: 600;
-  min-height: 44px;
 }
 
 @media (max-width: 768px) {
@@ -1006,78 +784,45 @@ export default {
   color: #a0aec0;
 }
 
-.dark .dictionary-view .table-header {
-  background: #1a202c;
-  border-bottom-color: #4a5568;
-  color: #e2e8f0;
-}
-
-.dark .dictionary-view .table-row:hover {
-  background: #1a202c;
-}
-
-.dark .dictionary-view .text-content {
-  color: #e2e8f0;
-}
-
-.dark .dictionary-view .date-text {
-  color: #718096;
-}
-
-.dark .dictionary-view .edit-input {
-  background: #1a202c;
-  border-color: #4a5568;
-  color: #e2e8f0;
-}
-
-.dark .dictionary-view .edit-input:focus {
-  border-color: #667eea;
-  background: #1a202c;
-}
-
-.dark .dictionary-view .action-btn {
-  background: #2d3748;
-  border-color: #4a5568;
-  color: #e2e8f0;
-}
-
 .dark .dictionary-view .empty-state {
   color: #718096;
 }
 
-.dark .dictionary-view .mobile-card {
+.dark .dictionary-view .item-card {
   background: #2d3748;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
 }
 
-.dark .dictionary-view .card-text {
+.dark .dictionary-view .item-content .english {
   color: #e2e8f0;
 }
 
-.dark .dictionary-view .card-main:active {
-  background-color: rgba(102, 126, 234, 0.2);
+.dark .dictionary-view .item-content .russian {
+  color: #e2e8f0;
 }
 
-.dark .dictionary-view .card-label {
-  color: #a0aec0;
-}
-
-.dark .dictionary-view .card-date {
+.dark .dictionary-view .item-date {
   color: #718096;
 }
 
-.dark .dictionary-view .card-edit-input {
+.dark .dictionary-view .item-action-btn {
   background: #1a202c;
   border-color: #4a5568;
   color: #e2e8f0;
 }
 
-.dark .dictionary-view .card-edit-input:focus {
+.dark .dictionary-view .item-edit-input {
+  background: #1a202c;
+  border-color: #4a5568;
+  color: #e2e8f0;
+}
+
+.dark .dictionary-view .item-edit-input:focus {
   border-color: #667eea;
   background: #1a202c;
 }
 
-.dark .dictionary-view .card-edit-label {
+.dark .dictionary-view .item-edit-label {
   color: #a0aec0;
 }
 

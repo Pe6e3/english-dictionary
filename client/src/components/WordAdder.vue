@@ -110,29 +110,6 @@
         </div>
       </div>
 
-      <!-- Список добавленных переводов -->
-      <div class="words-list">
-        <h2>Добавленные переводы</h2>
-        <div v-if="items.length === 0" class="empty-state">
-          Пока ничего не добавлено
-        </div>
-        <div v-else class="items-grid">
-          <div 
-            v-for="item in items" 
-            :key="item.id" 
-            class="item-card"
-          >
-            <div class="item-content">
-              <span class="english">{{ item.english_text }}</span>
-              <span class="arrow">→</span>
-              <span class="russian">{{ item.russian_translation }}</span>
-            </div>
-            <div class="item-date">
-              {{ formatDate(item.created_at) }}
-            </div>
-          </div>
-        </div>
-      </div>
     </div>
   </div>
 </template>
@@ -153,7 +130,6 @@ export default {
       existingTranslation: null,
       message: '',
       messageType: 'success',
-      items: [],
       checkTimeout: null,
       autoTranslationLoading: false,
       autoTranslationDone: false,
@@ -174,7 +150,6 @@ export default {
     }
   },
   mounted() {
-    this.loadItems()
     // Фокус на поле ввода английского языка при загрузке страницы
     this.$nextTick(() => {
       this.focusEnglishInput()
@@ -272,7 +247,6 @@ export default {
         this.autoTranslationResult = null
         this.translationOptions = []
         this.selectedTranslationIndex = 0
-        this.loadItems()
         
         // Фокус на поле ввода английского языка после сохранения
         this.$nextTick(() => {
@@ -284,23 +258,6 @@ export default {
       }
     },
 
-    async loadItems() {
-      try {
-        const url = `${this.apiBaseUrl}/translations?username=${encodeURIComponent(this.currentUsername)}`
-        console.log('Loading from URL:', url)
-        
-        const response = await fetch(url)
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`)
-        }
-        
-        const data = await response.json()
-        this.items = data
-      } catch (error) {
-        console.error('Ошибка при загрузке:', error)
-        this.showMessage('Ошибка при загрузке данных', 'error')
-      }
-    },
 
     showMessage(text, type = 'success') {
       this.message = text
