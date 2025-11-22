@@ -150,25 +150,23 @@ send_deploy_notification() {
     # Получаем статус PM2 и форматируем для Telegram
     PM2_STATUS_LINE=""
     if pm2 list | grep -q "english-backend"; then
-        # Извлекаем информацию из pm2 info и форматируем
+        # Извлекаем информацию из pm2 info
         PM2_INFO=$(pm2 info english-backend 2>/dev/null)
         
-        STATUS=$(echo "$PM2_INFO" | grep -E "^│ status" | sed 's/.*│ status[[:space:]]*│[[:space:]]*\([^│]*\)│.*/\1/' | xargs)
-        UPTIME=$(echo "$PM2_INFO" | grep -E "^│ uptime" | sed 's/.*│ uptime[[:space:]]*│[[:space:]]*\([^│]*\)│.*/\1/' | xargs)
-        RESTARTS=$(echo "$PM2_INFO" | grep -E "^│ restarts" | sed 's/.*│ restarts[[:space:]]*│[[:space:]]*\([^│]*\)│.*/\1/' | xargs)
-        MEMORY=$(echo "$PM2_INFO" | grep -E "^│ memory usage" | sed 's/.*│ memory usage[[:space:]]*│[[:space:]]*\([^│]*\)│.*/\1/' | xargs)
-        CPU=$(echo "$PM2_INFO" | grep -E "^│ cpu usage" | sed 's/.*│ cpu usage[[:space:]]*│[[:space:]]*\([^│]*\)│.*/\1/' | xargs)
+        # Парсим статус, uptime и restarts из pm2 info
+        STATUS=$(echo "$PM2_INFO" | grep -E "^│ status" | awk -F'│' '{print $3}' | xargs)
+        UPTIME=$(echo "$PM2_INFO" | grep -E "^│ uptime" | awk -F'│' '{print $3}' | xargs)
+        RESTARTS=$(echo "$PM2_INFO" | grep -E "^│ restarts" | awk -F'│' '{print $3}' | xargs)
         
-        # Если не удалось извлечь через sed, используем альтернативный метод
-        if [ -z "$STATUS" ]; then
-            STATUS=$(echo "$PM2_INFO" | grep "status" | head -1 | awk -F'│' '{print $3}' | xargs)
-            UPTIME=$(echo "$PM2_INFO" | grep "uptime" | head -1 | awk -F'│' '{print $3}' | xargs)
-            RESTARTS=$(echo "$PM2_INFO" | grep "restarts" | head -1 | awk -F'│' '{print $3}' | xargs)
-            MEMORY=$(echo "$PM2_INFO" | grep "memory" | head -1 | awk -F'│' '{print $3}' | xargs)
-            CPU=$(echo "$PM2_INFO" | grep "cpu" | head -1 | awk -F'│' '{print $3}' | xargs)
+        # Получаем память и CPU из pm2 list (таблица)
+        PM2_LIST=$(pm2 list | grep "english-backend" | head -1)
+        if [ -n "$PM2_LIST" ]; then
+            # pm2 list формат: id name mode ↺ status cpu memory
+            MEMORY=$(echo "$PM2_LIST" | awk '{print $(NF-1)}')
+            CPU=$(echo "$PM2_LIST" | awk '{print $(NF-2)}')
         fi
         
-        # Формируем строку статуса
+        # Формируем строку статуса с переносами строк
         PM2_STATUS_LINE="• Статус: ${STATUS:-unknown}"
         [ -n "$UPTIME" ] && PM2_STATUS_LINE="$PM2_STATUS_LINE
 • Время работы: $UPTIME"
