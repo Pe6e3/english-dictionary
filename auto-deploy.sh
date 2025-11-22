@@ -147,9 +147,30 @@ send_deploy_notification() {
     LAST_COMMIT_AUTHOR=$(git log -1 --format="%an")
     CURRENT_BRANCH=$(git branch --show-current)
     
-    # Получаем статус PM2
-    PM2_INFO=$(pm2 info english-backend 2>/dev/null | grep -E "(status|uptime|memory|cpu|restarts)" | head -5 | tr '\n' '; ' || echo "status: unknown")
-    PM2_STATUS=$(echo "$PM2_INFO" | sed 's/; $//')
+    # Получаем статус PM2 и форматируем для Telegram
+    PM2_STATUS_LINE=""
+    if pm2 list | grep -q "english-backend"; then
+        PM2_STATUS=$(pm2 jlist | python3 -c "import sys, json; data=json.load(sys.stdin); app=[a for a in data if a.get('name')=='english-backend']; print(json.dumps(app[0] if app else {}))" 2>/dev/null)
+        
+        if [ -n "$PM2_STATUS" ] && [ "$PM2_STATUS" != "{}" ]; then
+            STATUS=$(echo "$PM2_STATUS" | python3 -c "import sys, json; d=json.load(sys.stdin); print(d.get('pm2_env', {}).get('status', 'unknown'))" 2>/dev/null)
+            UPTIME=$(echo "$PM2_STATUS" | python3 -c "import sys, json; d=json.load(sys.stdin); uptime=d.get('pm2_env', {}).get('pm_uptime', 0); import time; print(f'{uptime//1000//60//60}ч {uptime//1000//60%60}м {uptime//1000%60}с' if uptime > 0 else '0с')" 2>/dev/null)
+            RESTARTS=$(echo "$PM2_STATUS" | python3 -c "import sys, json; d=json.load(sys.stdin); print(d.get('pm2_env', {}).get('restart_time', 0))" 2>/dev/null)
+            MEMORY=$(echo "$PM2_STATUS" | python3 -c "import sys, json; d=json.load(sys.stdin); mem=d.get('monit', {}).get('memory', 0); print(f'{mem//1024//1024}MB')" 2>/dev/null)
+            CPU=$(echo "$PM2_STATUS" | python3 -c "import sys, json; d=json.load(sys.stdin); cpu=d.get('monit', {}).get('cpu', 0); print(f'{cpu}%')" 2>/dev/null)
+            
+            PM2_STATUS_LINE="• Статус: $STATUS
+• Время работы: $UPTIME
+• Перезапусков: $RESTARTS
+• Память: $MEMORY
+• CPU: $CPU"
+        else
+            # Fallback: используем pm2 info
+            PM2_STATUS_LINE=$(pm2 info english-backend 2>/dev/null | grep -E "(status|uptime|restarts|memory|cpu)" | head -5 | sed 's/^[[:space:]]*/• /' | sed 's/[[:space:]]*:[[:space:]]*/: /' | tr '\n' '\n' || echo "• Статус: unknown")
+        fi
+    else
+        PM2_STATUS_LINE="• Процесс не найден"
+    fi
     
     # Получаем информацию о сервере
     SERVER_HOSTNAME=$(hostname)
@@ -175,7 +196,7 @@ $LAST_COMMIT_BODY
 • Время деплоя: $DEPLOY_TIME
 
 📊 Статус PM2:
-• $PM2_STATUS
+$PM2_STATUS_LINE
 
 ✅ Все компоненты успешно обновлены и перезапущены."
 
