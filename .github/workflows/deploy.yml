@@ -1,0 +1,42 @@
+name: Auto Deploy
+
+on:
+  push:
+    branches:
+      - main
+      - master
+
+jobs:
+  deploy:
+    name: Deploy to Server
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      
+      - name: Display version info
+        run: |
+          echo "═══════════════════════════════════════════════════════════"
+          echo "📦 ИНФОРМАЦИЯ О ВЕРСИИ"
+          echo "═══════════════════════════════════════════════════════════"
+          echo "Коммит:     $(git log -1 --format='%h')"
+          echo "Полный ID:  $(git log -1 --format='%H')"
+          echo "Сообщение:  $(git log -1 --format='%s')"
+          echo "Автор:      $(git log -1 --format='%an')"
+          echo "Дата:       $(git log -1 --format='%cd' --date=format:'%Y-%m-%d %H:%M:%S')"
+          echo "Ветка:      $(git branch --show-current)"
+          echo "═══════════════════════════════════════════════════════════"
+      
+      - name: Deploy to server via SSH
+        uses: appleboy/ssh-action@v0.1.7
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          script: |
+            cd /var/www/english
+            ./auto-deploy.sh
+
