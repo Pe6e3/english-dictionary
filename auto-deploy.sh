@@ -163,7 +163,13 @@ deploy_client() {
     # Установка зависимостей
     if [ -f "package.json" ]; then
         log_info "Установка зависимостей клиента..."
-        npm install --legacy-peer-deps --silent 2>&1 | grep -E "(added|removed|changed)" || true
+        # Устанавливаем зависимости без --silent, чтобы видеть все ошибки
+        npm install --legacy-peer-deps 2>&1 | grep -E "(added|removed|changed|up to date|audited)" || true
+        # Проверяем, что vite установлен
+        if [ ! -f "node_modules/.bin/vite" ]; then
+            log_warn "⚠️  vite не найден, переустанавливаем зависимости..."
+            npm install --legacy-peer-deps 2>&1 | tail -5 || true
+        fi
         
         # Сборка проекта
         if grep -q "\"build\"" package.json; then
