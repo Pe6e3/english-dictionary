@@ -440,8 +440,9 @@ app.post('/api/add-translation', (req, res) => {
 
     const englishTextTrimmed = englishText.trim();
     const russianTranslationTrimmed = russianTranslation.trim();
+    const englishTextLower = englishTextTrimmed.toLowerCase();
 
-    // Сначала проверяем, существует ли уже такой перевод
+    // Сначала проверяем, существует ли уже такой перевод (без учета регистра)
     db.get(`
       SELECT 
         COALESCE(english_word, english_phrase) as text,
@@ -456,33 +457,87 @@ app.post('/api/add-translation', (req, res) => {
         WHERE LOWER(english_phrase) = ? AND user_id = ?
       )
       LIMIT 1
-    `, [englishTextTrimmed.toLowerCase(), user.id, englishTextTrimmed.toLowerCase(), user.id], (err, existingRow) => {
+    `, [englishTextLower, user.id, englishTextLower, user.id], (err, existingRow) => {
       if (err) {
         console.error('Ошибка при проверке существования перевода:', err);
         return res.status(500).json({ error: 'Ошибка при проверке перевода' });
       }
 
       if (existingRow) {
-        return res.status(409).json({ error: 'Такой перевод уже существует' });
+        return res.status(409).json({ 
+          error: 'Такой перевод уже существует',
+          existing: {
+            text: existingRow.text,
+            translation: existingRow.translation
+          }
+        });
       }
 
-      // Если перевода нет, добавляем в words
-      db.run(
-        'INSERT INTO words (english_word, russian_translation, user_id) VALUES (?, ?, ?)',
-        [englishTextTrimmed, russianTranslationTrimmed, user.id],
-        function(insertErr) {
-          if (insertErr) {
-            console.error('Ошибка при добавлении перевода:', insertErr);
-            return res.status(500).json({ error: 'Ошибка при добавлении перевода: ' + insertErr.message });
-          }
-          
-          res.json({ 
-            success: true, 
-            id: this.lastID,
-            message: 'Перевод успешно добавлен' 
+      // Проверяем также точное совпадение (с учетом регистра) для текущего пользователя
+      // Это нужно, потому что UNIQUE constraint чувствителен к регистру
+      db.get(`
+        SELECT english_word
+        FROM words
+        WHERE english_word = ? AND user_id = ?
+        LIMIT 1
+      `, [englishTextTrimmed, user.id], (err2, exactMatch) => {
+        if (err2) {
+          console.error('Ошибка при проверке точного совпадения:', err2);
+          return res.status(500).json({ error: 'Ошибка при проверке перевода' });
+        }
+
+        if (exactMatch) {
+          return res.status(409).json({ 
+            error: 'Такой перевод уже существует (точное совпадение)'
           });
         }
-      );
+
+        // Если перевода нет, добавляем в words (сохраняем оригинальный регистр)
+        db.run(
+          'INSERT INTO words (english_word, russian_translation, user_id) VALUES (?, ?, ?)',
+          [englishTextTrimmed, russianTranslationTrimmed, user.id],
+          function(insertErr) {
+            if (insertErr) {
+              console.error('Ошибка при добавлении перевода:', insertErr);
+              
+              // Если ошибка UNIQUE constraint, проверяем еще раз
+              if (insertErr.code === 'SQLITE_CONSTRAINT' && insertErr.message.includes('UNIQUE')) {
+                // Проверяем, может быть слово уже есть с другим регистром
+                db.get(`
+                  SELECT english_word, russian_translation
+                  FROM words
+                  WHERE LOWER(english_word) = ? AND user_id = ?
+                  LIMIT 1
+                `, [englishTextLower, user.id], (err3, existing) => {
+                  if (err3) {
+                    return res.status(500).json({ error: 'Ошибка при добавлении перевода: ' + insertErr.message });
+                  }
+                  
+                  if (existing) {
+                    return res.status(409).json({ 
+                      error: 'Такой перевод уже существует',
+                      existing: {
+                        text: existing.english_word,
+                        translation: existing.russian_translation
+                      }
+                    });
+                  }
+                  
+                  return res.status(500).json({ error: 'Ошибка при добавлении перевода: ' + insertErr.message });
+                });
+              } else {
+                return res.status(500).json({ error: 'Ошибка при добавлении перевода: ' + insertErr.message });
+              }
+            } else {
+              res.json({ 
+                success: true, 
+                id: this.lastID,
+                message: 'Перевод успешно добавлен' 
+              });
+            }
+          }
+        );
+      });
     });
   });
 });
