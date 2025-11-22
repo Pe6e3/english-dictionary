@@ -147,15 +147,10 @@ export default {
     },
     allItems() {
       // Добавляем состояние показа перевода к каждому элементу
-      return this.translations.map(item => {
-        const baseItem = { 
-          ...item, 
-          showTranslation: this.showTranslationMap[item.id] || false
-        }
-        // Сохраняем ссылку на оригинальный элемент для редактирования
-        baseItem._original = item
-        return baseItem
-      })
+      return this.translations.map(item => ({ 
+        ...item, 
+        showTranslation: this.showTranslationMap[item.id] || false
+      }))
     },
     filteredItems() {
       if (!this.searchQuery.trim()) return this.allItems
@@ -185,37 +180,39 @@ export default {
     },
 
     toggleTranslation(item) {
-      // Находим оригинальный элемент для проверки editing
-      const originalItem = item._original || this.translations.find(t => t.id === item.id)
-      if (!originalItem || originalItem.editing) return
+      // Проверяем, не в режиме ли редактирования
+      const index = this.translations.findIndex(t => t.id === item.id)
+      if (index === -1 || this.translations[index].editing) return
       
       this.showTranslationMap[item.id] = !this.showTranslationMap[item.id]
     },
     
     startEdit(item) {
       // Находим оригинальный элемент в массиве translations
-      const originalItem = item._original || this.translations.find(t => t.id === item.id)
-      if (!originalItem) return
+      const index = this.translations.findIndex(t => t.id === item.id)
+      if (index === -1) return
       
       // Создаем копии для редактирования
-      originalItem.editing = true
-      originalItem.editEnglish = originalItem.english_text
-      originalItem.editRussian = originalItem.russian_translation
+      this.translations[index].editing = true
+      this.translations[index].editEnglish = this.translations[index].english_text
+      this.translations[index].editRussian = this.translations[index].russian_translation
     },
 
     async saveEdit(item) {
       // Находим оригинальный элемент в массиве translations
-      const originalItem = item._original || this.translations.find(t => t.id === item.id)
-      if (!originalItem) return
+      const index = this.translations.findIndex(t => t.id === item.id)
+      if (index === -1) return
+      
+      const translation = this.translations[index]
       
       try {
         const body = { 
-          englishText: originalItem.editEnglish.trim(), 
-          russianTranslation: originalItem.editRussian.trim(), 
+          englishText: translation.editEnglish.trim(), 
+          russianTranslation: translation.editRussian.trim(), 
           username: this.currentUsername 
         }
 
-        const response = await fetch(`${this.apiBaseUrl}/update-translation/${originalItem.id}`, {
+        const response = await fetch(`${this.apiBaseUrl}/update-translation/${translation.id}`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json'
@@ -225,13 +222,13 @@ export default {
 
         if (response.ok) {
           // Обновляем данные в локальном массиве
-          originalItem.english_text = originalItem.editEnglish.trim()
-          originalItem.russian_translation = originalItem.editRussian.trim()
+          translation.english_text = translation.editEnglish.trim()
+          translation.russian_translation = translation.editRussian.trim()
           
           // Выходим из режима редактирования
-          originalItem.editing = false
-          delete originalItem.editEnglish
-          delete originalItem.editRussian
+          translation.editing = false
+          delete translation.editEnglish
+          delete translation.editRussian
           
           // Обновляем счетчик в навигации
           this.$root.$emit('update-translations-count')
@@ -247,13 +244,15 @@ export default {
 
     cancelEdit(item) {
       // Находим оригинальный элемент в массиве translations
-      const originalItem = item._original || this.translations.find(t => t.id === item.id)
-      if (!originalItem) return
+      const index = this.translations.findIndex(t => t.id === item.id)
+      if (index === -1) return
+      
+      const translation = this.translations[index]
       
       // Отменяем редактирование
-      originalItem.editing = false
-      delete originalItem.editEnglish
-      delete originalItem.editRussian
+      translation.editing = false
+      delete translation.editEnglish
+      delete translation.editRussian
     },
 
     confirmDelete(item) {
