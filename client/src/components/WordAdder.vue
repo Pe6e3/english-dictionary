@@ -190,7 +190,9 @@ export default {
   },
   computed: {
     apiBaseUrl() {
-      return 'http://localhost:3002/api'
+      // Используем hostname текущего подключения (localhost или IP)
+      const hostname = window.location.hostname
+      return `http://${hostname}:3002/api`
     }
   },
   mounted() {
@@ -912,19 +914,53 @@ export default {
 }
 
 @media (max-width: 768px) {
+  .word-adder {
+    padding: 10px;
+  }
+  
   .container {
-    margin: 10px;
+    margin: 0;
     border-radius: 15px;
   }
   
   .title {
-    font-size: 2rem;
-    padding: 30px 15px 15px;
+    font-size: 1.75rem;
+    padding: 25px 15px 15px;
+  }
+  
+  .dictionary-btn {
+    padding: 12px 20px;
+    font-size: 15px;
+  }
+  
+  .toggle-container {
+    padding: 15px;
+    gap: 8px;
+  }
+  
+  .toggle-btn {
+    padding: 12px 16px;
+    font-size: 14px;
   }
   
   .form-container,
   .words-list {
     padding: 20px;
+  }
+  
+  .input-group input {
+    font-size: 16px; /* Предотвращает зум на iOS */
+    padding: 14px 18px;
+  }
+  
+  .translation-input-container input {
+    padding-right: 110px;
+  }
+  
+  .auto-translate-btn {
+    font-size: 11px;
+    padding: 6px 12px;
+    right: 8px;
   }
   
   .translation-content {
@@ -951,6 +987,118 @@ export default {
 
   .option-quality,
   .option-source {
+    font-size: 11px;
+  }
+  
+  .submit-btn {
+    padding: 14px 20px;
+    font-size: 16px;
+    min-height: 48px;
+  }
+  
+  .items-grid {
+    gap: 12px;
+  }
+  
+  .item-card {
+    padding: 16px;
+  }
+  
+  .item-content {
+    font-size: 15px;
+    gap: 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  .word-adder {
+    padding: 5px;
+  }
+  
+  .container {
+    border-radius: 12px;
+  }
+  
+  .title {
+    font-size: 1.5rem;
+    padding: 20px 12px 12px;
+  }
+  
+  .dictionary-btn {
+    padding: 10px 18px;
+    font-size: 14px;
+  }
+  
+  .toggle-container {
+    padding: 12px;
+  }
+  
+  .toggle-btn {
+    padding: 10px 12px;
+    font-size: 13px;
+  }
+  
+  .form-container,
+  .words-list {
+    padding: 15px;
+  }
+  
+  .input-group label {
+    font-size: 13px;
+  }
+  
+  .input-group input {
+    padding: 12px 15px;
+    font-size: 16px;
+  }
+  
+  .translation-input-container input {
+    padding-right: 100px;
+  }
+  
+  .auto-translate-btn {
+    font-size: 10px;
+    padding: 5px 10px;
+  }
+  
+  .translation-card {
+    padding: 15px;
+  }
+  
+  .translation-card h3 {
+    font-size: 16px;
+  }
+  
+  .translation-content {
+    font-size: 16px;
+    gap: 8px;
+  }
+  
+  .english,
+  .russian {
+    padding: 6px 12px;
+    font-size: 14px;
+  }
+  
+  .submit-btn {
+    padding: 12px 18px;
+    font-size: 15px;
+  }
+  
+  .words-list h2 {
+    font-size: 1.25rem;
+  }
+  
+  .item-card {
+    padding: 12px;
+  }
+  
+  .item-content {
+    font-size: 14px;
+    gap: 10px;
+  }
+  
+  .item-date {
     font-size: 11px;
   }
 }

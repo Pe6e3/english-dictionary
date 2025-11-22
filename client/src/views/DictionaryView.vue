@@ -40,90 +40,175 @@
         <div v-if="filteredItems.length === 0" class="empty-state">
           {{ searchQuery ? 'Ничего не найдено' : 'Пока ничего не добавлено' }}
         </div>
-        <div v-else class="table">
-          <!-- Заголовок таблицы -->
-          <div class="table-header">
-            <div class="col-english">Английский</div>
-            <div class="col-arrow">→</div>
-            <div class="col-russian">Русский перевод</div>
-            <div class="col-date">Дата</div>
-            <div class="col-actions">Действия</div>
-          </div>
-          
-          <!-- Строки таблицы -->
-          <div 
-            v-for="item in filteredItems" 
-            :key="item.id" 
-            class="table-row"
-          >
-            <!-- Режим просмотра -->
-            <div v-if="!item.editing" class="row-content">
-              <div class="col-english">
-                <span class="text-content">{{ mode === 'word' ? item.english_word : item.english_phrase }}</span>
-              </div>
+        <div v-else>
+          <!-- Десктопная таблица -->
+          <div class="table desktop-table">
+            <!-- Заголовок таблицы -->
+            <div class="table-header">
+              <div class="col-english">Английский</div>
               <div class="col-arrow">→</div>
-              <div class="col-russian">
-                <span class="text-content">{{ item.russian_translation }}</span>
+              <div class="col-russian">Русский перевод</div>
+              <div class="col-date">Дата</div>
+              <div class="col-actions">Действия</div>
+            </div>
+            
+            <!-- Строки таблицы -->
+            <div 
+              v-for="item in filteredItems" 
+              :key="item.id" 
+              class="table-row"
+            >
+              <!-- Режим просмотра -->
+              <div v-if="!item.editing" class="row-content">
+                <div class="col-english">
+                  <span class="text-content">{{ mode === 'word' ? item.english_word : item.english_phrase }}</span>
+                </div>
+                <div class="col-arrow">→</div>
+                <div class="col-russian">
+                  <span class="text-content">{{ item.russian_translation }}</span>
+                </div>
+                <div class="col-date">
+                  <span class="date-text">{{ formatDate(item.created_at) }}</span>
+                </div>
+                <div class="col-actions">
+                  <button 
+                    class="action-btn edit"
+                    @click="startEdit(item)"
+                    title="Редактировать"
+                  >
+                    ✏️
+                  </button>
+                  <button 
+                    class="action-btn delete"
+                    @click="confirmDelete(item)"
+                    title="Удалить"
+                  >
+                    🗑️
+                  </button>
+                </div>
               </div>
-              <div class="col-date">
-                <span class="date-text">{{ formatDate(item.created_at) }}</span>
-              </div>
-              <div class="col-actions">
-                <button 
-                  class="action-btn edit"
-                  @click="startEdit(item)"
-                  title="Редактировать"
-                >
-                  ✏️
-                </button>
-                <button 
-                  class="action-btn delete"
-                  @click="confirmDelete(item)"
-                  title="Удалить"
-                >
-                  🗑️
-                </button>
+
+              <!-- Режим редактирования -->
+              <div v-else class="edit-row">
+                <div class="col-english">
+                  <input
+                    v-model="item.editEnglish"
+                    type="text"
+                    class="edit-input"
+                    :placeholder="mode === 'word' ? 'Слово' : 'Фраза'"
+                  />
+                </div>
+                <div class="col-arrow">→</div>
+                <div class="col-russian">
+                  <input
+                    v-model="item.editRussian"
+                    type="text"
+                    class="edit-input"
+                    placeholder="Перевод"
+                  />
+                </div>
+                <div class="col-date">
+                  <span class="date-text">{{ formatDate(item.created_at) }}</span>
+                </div>
+                <div class="col-actions">
+                  <button 
+                    class="save-btn"
+                    @click="saveEdit(item)"
+                    :disabled="!item.editEnglish.trim() || !item.editRussian.trim()"
+                    title="Сохранить"
+                  >
+                    💾
+                  </button>
+                  <button 
+                    class="cancel-btn"
+                    @click="cancelEdit(item)"
+                    title="Отмена"
+                  >
+                    ❌
+                  </button>
+                </div>
               </div>
             </div>
+          </div>
 
-            <!-- Режим редактирования -->
-            <div v-else class="edit-row">
-              <div class="col-english">
-                <input
-                  v-model="item.editEnglish"
-                  type="text"
-                  class="edit-input"
-                  :placeholder="mode === 'word' ? 'Слово' : 'Фраза'"
-                />
+          <!-- Мобильные карточки -->
+          <div class="mobile-cards">
+            <div 
+              v-for="item in filteredItems" 
+              :key="item.id" 
+              class="mobile-card"
+            >
+              <!-- Режим просмотра -->
+              <div v-if="!item.editing" class="card-content">
+                <div class="card-main">
+                  <div class="card-english">
+                    <span class="card-label">Английский:</span>
+                    <span class="card-text">{{ mode === 'word' ? item.english_word : item.english_phrase }}</span>
+                  </div>
+                  <div class="card-arrow">→</div>
+                  <div class="card-russian">
+                    <span class="card-label">Русский:</span>
+                    <span class="card-text">{{ item.russian_translation }}</span>
+                  </div>
+                </div>
+                <div class="card-footer">
+                  <span class="card-date">{{ formatDate(item.created_at) }}</span>
+                  <div class="card-actions">
+                    <button 
+                      class="action-btn edit"
+                      @click="startEdit(item)"
+                      title="Редактировать"
+                    >
+                      ✏️
+                    </button>
+                    <button 
+                      class="action-btn delete"
+                      @click="confirmDelete(item)"
+                      title="Удалить"
+                    >
+                      🗑️
+                    </button>
+                  </div>
+                </div>
               </div>
-              <div class="col-arrow">→</div>
-              <div class="col-russian">
-                <input
-                  v-model="item.editRussian"
-                  type="text"
-                  class="edit-input"
-                  placeholder="Перевод"
-                />
-              </div>
-              <div class="col-date">
-                <span class="date-text">{{ formatDate(item.created_at) }}</span>
-              </div>
-              <div class="col-actions">
-                <button 
-                  class="save-btn"
-                  @click="saveEdit(item)"
-                  :disabled="!item.editEnglish.trim() || !item.editRussian.trim()"
-                  title="Сохранить"
-                >
-                  💾
-                </button>
-                <button 
-                  class="cancel-btn"
-                  @click="cancelEdit(item)"
-                  title="Отмена"
-                >
-                  ❌
-                </button>
+
+              <!-- Режим редактирования -->
+              <div v-else class="card-edit">
+                <div class="card-edit-inputs">
+                  <div class="card-edit-group">
+                    <label class="card-edit-label">{{ mode === 'word' ? 'Слово' : 'Фраза' }}</label>
+                    <input
+                      v-model="item.editEnglish"
+                      type="text"
+                      class="card-edit-input"
+                      :placeholder="mode === 'word' ? 'Слово' : 'Фраза'"
+                    />
+                  </div>
+                  <div class="card-edit-group">
+                    <label class="card-edit-label">Перевод</label>
+                    <input
+                      v-model="item.editRussian"
+                      type="text"
+                      class="card-edit-input"
+                      placeholder="Перевод"
+                    />
+                  </div>
+                </div>
+                <div class="card-edit-actions">
+                  <button 
+                    class="save-btn"
+                    @click="saveEdit(item)"
+                    :disabled="!item.editEnglish.trim() || !item.editRussian.trim()"
+                  >
+                    💾 Сохранить
+                  </button>
+                  <button 
+                    class="cancel-btn"
+                    @click="cancelEdit(item)"
+                  >
+                    ❌ Отмена
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -167,7 +252,9 @@ export default {
   },
   computed: {
     apiBaseUrl() {
-      return 'http://localhost:3002/api'
+      // Используем hostname текущего подключения (localhost или IP)
+      const hostname = window.location.hostname
+      return `http://${hostname}:3002/api`
     },
     filteredItems() {
       const items = this.mode === 'word' ? this.words : this.phrases
@@ -445,6 +532,11 @@ export default {
   min-width: 800px;
 }
 
+/* Мобильные карточки - скрыты по умолчанию */
+.mobile-cards {
+  display: none;
+}
+
 .table-header {
   display: grid;
   grid-template-columns: 2fr 0.5fr 2fr 1fr 1fr;
@@ -690,50 +782,271 @@ export default {
   }
 }
 
+/* Стили для мобильных карточек */
+.mobile-card {
+  background: white;
+  border-radius: 12px;
+  margin-bottom: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+  transition: all 0.2s ease;
+}
+
+.mobile-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+}
+
+.card-content {
+  padding: 16px;
+}
+
+.card-main {
+  margin-bottom: 12px;
+}
+
+.card-english,
+.card-russian {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 12px;
+}
+
+.card-label {
+  font-size: 11px;
+  color: #a0aec0;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.card-text {
+  font-size: 16px;
+  color: #2d3748;
+  font-weight: 600;
+  word-break: break-word;
+  line-height: 1.4;
+}
+
+.card-arrow {
+  text-align: center;
+  color: #cbd5e0;
+  font-weight: bold;
+  font-size: 20px;
+  margin: 8px 0;
+}
+
+.card-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 12px;
+  border-top: 1px solid #f1f5f9;
+}
+
+.card-date {
+  font-size: 12px;
+  color: #a0aec0;
+  font-weight: 500;
+}
+
+.card-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.card-actions .action-btn {
+  padding: 8px 12px;
+  font-size: 16px;
+  min-width: 44px;
+  min-height: 44px;
+}
+
+/* Режим редактирования в карточке */
+.card-edit {
+  padding: 16px;
+}
+
+.card-edit-inputs {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.card-edit-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.card-edit-label {
+  font-size: 12px;
+  color: #718096;
+  font-weight: 600;
+}
+
+.card-edit-input {
+  width: 100%;
+  padding: 12px;
+  border: 2px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 16px;
+  transition: all 0.3s ease;
+  box-sizing: border-box;
+}
+
+.card-edit-input:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.card-edit-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.card-edit-actions .save-btn,
+.card-edit-actions .cancel-btn {
+  flex: 1;
+  padding: 12px;
+  font-size: 14px;
+  font-weight: 600;
+  min-height: 44px;
+}
+
 @media (max-width: 768px) {
   .dictionary-view {
     padding: 10px;
+  }
+  
+  .title {
+    font-size: 1.75rem;
+    padding: 25px 15px 15px;
+  }
+  
+  .toggle-container {
+    padding: 12px 15px;
+  }
+  
+  .toggle-btn {
+    padding: 12px 16px;
+    font-size: 14px;
   }
   
   .header-row {
     flex-direction: column;
     gap: 15px;
     align-items: stretch;
+    padding: 15px;
   }
   
   .search-container {
     max-width: none;
   }
   
+  .search-input {
+    font-size: 16px; /* Предотвращает зум на iOS */
+    padding: 12px 15px;
+  }
+  
+  .stats-compact {
+    justify-content: center;
+  }
+  
   .table-container {
-    overflow-x: auto;
+    padding: 0;
+    overflow-x: visible;
   }
   
-  .table {
-    min-width: 600px;
+  /* Скрываем десктопную таблицу на мобильных */
+  .desktop-table {
+    display: none;
   }
   
-  .table-header,
-  .row-content,
-  .edit-row {
-    grid-template-columns: 2fr 0.5fr 2fr 1fr 1fr;
-    gap: 8px;
-    padding: 8px 12px;
-  }
-  
-  .text-content,
-  .edit-input {
-    font-size: 12px;
+  /* Показываем мобильные карточки */
+  .mobile-cards {
+    display: block;
+    padding: 15px;
   }
   
   .action-btn {
-    padding: 4px 6px;
-    font-size: 12px;
+    padding: 8px 12px;
+    font-size: 16px;
+    min-width: 44px;
+    min-height: 44px;
   }
   
-  .col-actions {
-    gap: 4px;
+  .modal {
+    width: 95%;
+    max-width: none;
+    margin: 20px;
+    padding: 20px;
+  }
+  
+  .modal-actions {
+    flex-direction: column;
+    gap: 10px;
+  }
+  
+  .modal-actions .cancel-btn,
+  .modal-actions .delete-btn {
+    width: 100%;
+    padding: 14px;
+    font-size: 16px;
+    min-height: 44px;
+  }
+}
+
+@media (max-width: 480px) {
+  .dictionary-view {
+    padding: 5px;
+  }
+  
+  .container {
+    border-radius: 15px;
+  }
+  
+  .title {
+    font-size: 1.5rem;
+    padding: 20px 12px 12px;
+  }
+  
+  .toggle-container {
+    padding: 10px 12px;
+    gap: 8px;
+  }
+  
+  .toggle-btn {
+    padding: 10px 12px;
+    font-size: 13px;
+  }
+  
+  .header-row {
+    padding: 12px;
+  }
+  
+  .mobile-cards {
+    padding: 12px;
+  }
+  
+  .mobile-card {
+    margin-bottom: 10px;
+  }
+  
+  .card-content,
+  .card-edit {
+    padding: 12px;
+  }
+  
+  .card-text {
+    font-size: 15px;
+  }
+  
+  .card-actions .action-btn {
+    padding: 10px;
+    font-size: 18px;
   }
 }
 </style>
-сде
