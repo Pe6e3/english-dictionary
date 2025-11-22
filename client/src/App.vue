@@ -1,6 +1,6 @@
 <template>
   <div id="app">
-    <nav class="navigation">
+    <nav v-if="isAuthenticated" class="navigation">
       <div class="nav-container">
         <button class="theme-toggle" @click="toggleTheme" :title="isDark ? 'Переключить на светлую тему' : 'Переключить на темную тему'">
           {{ isDark ? '☀️' : '🌙' }}
@@ -9,8 +9,11 @@
           🏠 Добавить слово
         </RouterLink>
         <RouterLink to="/dictionary" class="nav-link" active-class="active">
-          📚 Словарь!
+          📚 Словарь
         </RouterLink>
+        <button class="logout-btn" @click="handleLogout" title="Выйти">
+          🚪 Выйти
+        </button>
       </div>
     </nav>
     <RouterView />
@@ -18,17 +21,34 @@
 </template>
 
 <script>
+import { authService } from '@/utils/auth'
+
 export default {
   name: 'App',
   data() {
     return {
-      isDark: true
+      isDark: true,
+      isAuthenticated: false
+    }
+  },
+  watch: {
+    '$route'() {
+      this.checkAuth()
     }
   },
   mounted() {
     this.initTheme()
+    this.checkAuth()
   },
   methods: {
+    checkAuth() {
+      this.isAuthenticated = authService.isAuthenticated()
+    },
+    handleLogout() {
+      authService.logout()
+      this.checkAuth()
+      this.$router.push('/login')
+    },
     initTheme() {
       const savedTheme = localStorage.getItem('theme')
       if (savedTheme) {
@@ -141,6 +161,24 @@ body {
   box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
 }
 
+.logout-btn {
+  margin-left: auto;
+  background: rgba(239, 68, 68, 0.2);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  color: white;
+  padding: 12px 20px;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 14px;
+}
+
+.logout-btn:hover {
+  background: rgba(239, 68, 68, 0.3);
+  transform: translateY(-1px);
+}
+
 @media (max-width: 768px) {
   .nav-container {
     flex-direction: column;
@@ -156,6 +194,11 @@ body {
     position: absolute;
     top: 10px;
     right: 20px;
+  }
+  
+  .logout-btn {
+    margin-left: 0;
+    width: 100%;
   }
 }
 </style>
