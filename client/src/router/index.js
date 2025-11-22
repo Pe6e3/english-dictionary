@@ -1,6 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import HomeView from '../views/HomeView.vue'
-import DictionaryView from '../views/DictionaryView.vue'
 import LoginView from '../views/LoginView.vue'
 import { authService } from '../utils/auth'
 
@@ -17,12 +16,6 @@ const router = createRouter({
       path: '/',
       name: 'home',
       component: HomeView,
-      meta: { requiresAuth: true }
-    },
-    {
-      path: '/dictionary',
-      name: 'dictionary',
-      component: DictionaryView,
       meta: { requiresAuth: true }
     }
   ]

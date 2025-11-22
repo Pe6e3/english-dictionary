@@ -2,12 +2,6 @@
   <div id="app">
     <nav v-if="isAuthenticated" class="navigation">
       <div class="nav-container">
-        <RouterLink to="/" class="nav-link" active-class="active" title="Добавить слово">
-          🏠
-        </RouterLink>
-        <RouterLink to="/dictionary" class="nav-link" active-class="active" title="Словарь">
-          📚
-        </RouterLink>
         <div class="translations-count" title="Количество переводов">
           <span class="count-badge">{{ translationsCount }}</span>
         </div>
