@@ -250,6 +250,39 @@ app.get('/api/phrases', (req, res) => {
   });
 });
 
+// Webhook для автоматического деплоя
+const DEPLOY_SECRET = process.env.DEPLOY_SECRET || 'your-secret-key-change-me';
+
+app.post('/api/deploy', (req, res) => {
+  const { secret } = req.body;
+  
+  // Проверяем секретный ключ
+  if (secret !== DEPLOY_SECRET) {
+    return res.status(401).json({ error: 'Неверный секретный ключ' });
+  }
+  
+  // Запускаем деплой в фоновом режиме
+  const { exec } = require('child_process');
+  const deployScript = '/var/www/english/auto-deploy.sh';
+  
+  exec(`bash ${deployScript}`, (error, stdout, stderr) => {
+    if (error) {
+      console.error('Ошибка деплоя:', error);
+      return res.status(500).json({ 
+        success: false, 
+        error: 'Ошибка при выполнении деплоя',
+        message: error.message 
+      });
+    }
+    
+    res.json({ 
+      success: true, 
+      message: 'Деплой запущен',
+      output: stdout 
+    });
+  });
+});
+
 // Запуск сервера
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Сервер запущен на порту ${PORT}`);

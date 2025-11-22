@@ -44,6 +44,20 @@ jobs:
             ./auto-deploy.sh
         continue-on-error: true
       
+      - name: Deploy via webhook (fallback)
+        if: steps.deploy_ssh.outcome == 'failure'
+        id: deploy_webhook
+        run: |
+          if [ -n "${{ secrets.DEPLOY_WEBHOOK_URL }}" ] && [ -n "${{ secrets.DEPLOY_SECRET }}" ]; then
+            curl -s -X POST \
+              -H "Content-Type: application/json" \
+              -d "{\"secret\":\"${{ secrets.DEPLOY_SECRET }}\"}" \
+              "${{ secrets.DEPLOY_WEBHOOK_URL }}" || echo "Webhook деплой не выполнен"
+          else
+            echo "Webhook не настроен (DEPLOY_WEBHOOK_URL и DEPLOY_SECRET)"
+          fi
+        continue-on-error: true
+      
       - name: Send deployment notification
         if: always()
         run: |
