@@ -193,16 +193,8 @@ $LAST_COMMIT_BODY
     fi
     
     # Проверяем, что JSON не пустой
-    if [ -z "$JSON_DATA" ]; then
-        log_warn "⚠️  JSON данные пусты, пропускаем отправку"
-        return
-    fi
-    
-    # Проверяем длину сообщения в JSON
-    MSG_LENGTH=$(echo "$JSON_DATA" | python3 -c "import json, sys; data=json.load(sys.stdin); print(len(data.get('massage', '')))" 2>/dev/null || echo "0")
-    if [ "$MSG_LENGTH" = "0" ]; then
-        log_warn "⚠️  Сообщение в JSON пустое, пропускаем отправку"
-        log_info "JSON данные: ${JSON_DATA:0:200}..."
+    if [ -z "$JSON_DATA" ] || [ "${#JSON_DATA}" -lt 20 ]; then
+        log_warn "⚠️  JSON данные пусты или слишком короткие, пропускаем отправку"
         return
     fi
     
