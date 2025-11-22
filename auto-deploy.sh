@@ -199,10 +199,13 @@ PYEOF
         return
     fi
     
+    # Отладочный вывод (можно закомментировать)
+    # log_info "Отправляемый JSON: ${JSON_DATA:0:100}..."
+    
     # Отправляем POST запрос
     RESPONSE=$(curl -s -w "\n%{http_code}" -X POST \
         -H "Content-Type: application/json" \
-        -d "$JSON_DATA" \
+        --data-raw "$JSON_DATA" \
         "https://stage.istransit.kz/api/terminals/v01/send_log/" 2>&1)
     
     HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
