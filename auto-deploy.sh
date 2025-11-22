@@ -142,6 +142,7 @@ send_deploy_notification() {
     LAST_COMMIT=$(git log -1 --format="%H")
     LAST_COMMIT_SHORT=$(git log -1 --format="%h")
     LAST_COMMIT_MSG=$(git log -1 --format="%s")
+    LAST_COMMIT_BODY=$(git log -1 --format="%B" | sed '/^$/d' | head -20)
     LAST_COMMIT_DATE=$(git log -1 --format="%cd" --date=format:"%Y-%m-%d %H:%M:%S")
     LAST_COMMIT_AUTHOR=$(git log -1 --format="%an")
     CURRENT_BRANCH=$(git branch --show-current)
@@ -164,6 +165,9 @@ send_deploy_notification() {
 • Автор: $LAST_COMMIT_AUTHOR
 • Дата коммита: $LAST_COMMIT_DATE
 • Ветка: $CURRENT_BRANCH
+
+📝 Текст последнего коммита:
+$LAST_COMMIT_BODY
 
 🖥️ Информация о сервере:
 • Хост: $SERVER_HOSTNAME
