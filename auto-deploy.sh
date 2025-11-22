@@ -193,13 +193,18 @@ $LAST_COMMIT_BODY
     fi
     
     # Проверяем, что JSON не пустой
-    if [ -z "$JSON_DATA" ] || [ "$JSON_DATA" = "{\"massage\":\"\"}" ]; then
+    if [ -z "$JSON_DATA" ]; then
         log_warn "⚠️  JSON данные пусты, пропускаем отправку"
         return
     fi
     
-    # Отладочный вывод (можно закомментировать)
-    # log_info "Отправляемый JSON: ${JSON_DATA:0:100}..."
+    # Проверяем длину сообщения в JSON
+    MSG_LENGTH=$(echo "$JSON_DATA" | python3 -c "import json, sys; data=json.load(sys.stdin); print(len(data.get('massage', '')))" 2>/dev/null || echo "0")
+    if [ "$MSG_LENGTH" = "0" ]; then
+        log_warn "⚠️  Сообщение в JSON пустое, пропускаем отправку"
+        log_info "JSON данные: ${JSON_DATA:0:200}..."
+        return
+    fi
     
     # Отправляем POST запрос
     RESPONSE=$(curl -s -w "\n%{http_code}" -X POST \
