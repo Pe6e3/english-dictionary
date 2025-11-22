@@ -298,11 +298,11 @@ export default {
     },
 
     showTranslation(item) {
-      this.$set(item, 'showTranslation', true)
+      item.showTranslation = true
     },
     
     hideTranslation(item) {
-      this.$set(item, 'showTranslation', false)
+      item.showTranslation = false
     },
     
     startEdit(item) {
