@@ -1101,4 +1101,103 @@ export default {
     font-size: 11px;
   }
 }
+
+</style>
+
+<style>
+/* Темная тема */
+.dark .word-adder {
+  background: linear-gradient(135deg, #1a202c 0%, #2d3748 100%);
+}
+
+.dark .word-adder .container {
+  background: #2d3748;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+}
+
+.dark .word-adder .title {
+  color: #e2e8f0;
+}
+
+.dark .word-adder .toggle-container {
+  background: #1a202c;
+}
+
+.dark .word-adder .toggle-btn {
+  background: #2d3748;
+  color: #a0aec0;
+}
+
+.dark .word-adder .toggle-btn:hover:not(.active) {
+  background: #374151;
+}
+
+.dark .word-adder .form-container {
+  background: #2d3748;
+}
+
+.dark .word-adder .input-group label {
+  color: #e2e8f0;
+}
+
+.dark .word-adder .input-group input {
+  background: #1a202c;
+  border-color: #4a5568;
+  color: #e2e8f0;
+}
+
+.dark .word-adder .input-group input:focus {
+  border-color: #667eea;
+  background: #1a202c;
+}
+
+.dark .word-adder .translation-form {
+  background: #1a202c;
+}
+
+.dark .word-adder .words-list {
+  background: #1a202c;
+}
+
+.dark .word-adder .words-list h2 {
+  color: #e2e8f0;
+}
+
+.dark .word-adder .item-card {
+  background: #2d3748;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+}
+
+.dark .word-adder .item-content .english,
+.dark .word-adder .item-content .russian {
+  color: #e2e8f0;
+}
+
+.dark .word-adder .item-date {
+  color: #718096;
+}
+
+.dark .word-adder .translation-options {
+  background: #2d3748;
+  border-color: #4a5568;
+}
+
+.dark .word-adder .options-label {
+  color: #e2e8f0;
+}
+
+.dark .word-adder .option-card {
+  background: #1a202c;
+  border-color: #4a5568;
+  color: #e2e8f0;
+}
+
+.dark .word-adder .option-card:hover {
+  background: #2d3748;
+}
+
+.dark .word-adder .option-quality,
+.dark .word-adder .option-source {
+  color: #a0aec0;
+}
 </style>

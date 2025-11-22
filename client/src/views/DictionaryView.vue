@@ -1048,4 +1048,134 @@ export default {
     font-size: 18px;
   }
 }
+
+</style>
+
+<style>
+/* Темная тема */
+.dark .dictionary-view {
+  background: linear-gradient(135deg, #1a202c 0%, #2d3748 100%);
+}
+
+.dark .dictionary-view .container {
+  background: #2d3748;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+}
+
+.dark .dictionary-view .toggle-container {
+  background: #1a202c;
+}
+
+.dark .dictionary-view .toggle-btn {
+  background: #2d3748;
+  color: #a0aec0;
+}
+
+.dark .dictionary-view .toggle-btn:hover:not(.active) {
+  background: #374151;
+}
+
+.dark .dictionary-view .header-row {
+  background: #1a202c;
+  border-bottom-color: #4a5568;
+}
+
+.dark .dictionary-view .search-input {
+  background: #2d3748;
+  border-color: #4a5568;
+  color: #e2e8f0;
+}
+
+.dark .dictionary-view .search-input:focus {
+  border-color: #667eea;
+  background: #2d3748;
+}
+
+.dark .dictionary-view .stat-label {
+  color: #a0aec0;
+}
+
+.dark .dictionary-view .table-header {
+  background: #1a202c;
+  border-bottom-color: #4a5568;
+  color: #e2e8f0;
+}
+
+.dark .dictionary-view .table-row:hover {
+  background: #1a202c;
+}
+
+.dark .dictionary-view .text-content {
+  color: #e2e8f0;
+}
+
+.dark .dictionary-view .date-text {
+  color: #718096;
+}
+
+.dark .dictionary-view .edit-input {
+  background: #1a202c;
+  border-color: #4a5568;
+  color: #e2e8f0;
+}
+
+.dark .dictionary-view .edit-input:focus {
+  border-color: #667eea;
+  background: #1a202c;
+}
+
+.dark .dictionary-view .action-btn {
+  background: #2d3748;
+  border-color: #4a5568;
+  color: #e2e8f0;
+}
+
+.dark .dictionary-view .empty-state {
+  color: #718096;
+}
+
+.dark .dictionary-view .mobile-card {
+  background: #2d3748;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.dark .dictionary-view .card-text {
+  color: #e2e8f0;
+}
+
+.dark .dictionary-view .card-label {
+  color: #a0aec0;
+}
+
+.dark .dictionary-view .card-date {
+  color: #718096;
+}
+
+.dark .dictionary-view .card-edit-input {
+  background: #1a202c;
+  border-color: #4a5568;
+  color: #e2e8f0;
+}
+
+.dark .dictionary-view .card-edit-input:focus {
+  border-color: #667eea;
+  background: #1a202c;
+}
+
+.dark .dictionary-view .card-edit-label {
+  color: #a0aec0;
+}
+
+.dark .dictionary-view .modal {
+  background: #2d3748;
+  color: #e2e8f0;
+}
+
+.dark .dictionary-view .modal h3 {
+  color: #e2e8f0;
+}
+
+.dark .dictionary-view .modal p {
+  color: #a0aec0;
+}
 </style>
