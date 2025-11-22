@@ -354,26 +354,6 @@ export default {
   box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
 }
 
-.stats-compact {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.stat-badge {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  padding: 6px 12px;
-  border-radius: 20px;
-  font-weight: 700;
-  font-size: 16px;
-}
-
-.stat-label {
-  color: #718096;
-  font-size: 14px;
-}
-
 .translations-container {
   padding: 20px;
 }
@@ -685,10 +665,6 @@ export default {
     padding: 12px 15px;
   }
   
-  .stats-compact {
-    justify-content: center;
-  }
-  
   .translations-container {
     padding: 15px;
   }
@@ -756,10 +732,6 @@ export default {
 .dark .dictionary-view .search-input:focus {
   border-color: #667eea;
   background: #2d3748;
-}
-
-.dark .dictionary-view .stat-label {
-  color: #a0aec0;
 }
 
 .dark .dictionary-view .empty-state {
