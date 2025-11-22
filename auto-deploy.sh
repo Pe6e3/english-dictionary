@@ -179,20 +179,18 @@ $LAST_COMMIT_BODY
 
 ✅ Все компоненты успешно обновлены и перезапущены."
 
-    # Создаем временный файл для JSON
-    JSON_TMP=$(mktemp)
+    # Экранируем сообщение для JSON
+    # Заменяем обратные слеши, кавычки и переносы строк
+    MESSAGE_ESCAPED=$(printf '%s' "$MESSAGE" | sed 's/\\/\\\\/g' | sed 's/"/\\"/g' | sed 's/$/\\n/' | tr -d '\n' | sed 's/\\n$//')
     
-    # Формируем JSON с правильным экранированием
-    printf '{"massage":"%s"}' "$(echo "$MESSAGE" | sed 's/\\/\\\\/g' | sed 's/"/\\"/g' | sed ':a;N;$!ba;s/\n/\\n/g')" > "$JSON_TMP"
+    # Формируем JSON
+    JSON_DATA="{\"massage\":\"$MESSAGE_ESCAPED\"}"
     
     # Отправляем POST запрос
     RESPONSE=$(curl -s -w "\n%{http_code}" -X POST \
         -H "Content-Type: application/json" \
-        --data-binary "@$JSON_TMP" \
+        -d "$JSON_DATA" \
         "https://stage.istransit.kz/api/terminals/v01/send_log/" 2>&1)
-    
-    # Удаляем временный файл
-    rm -f "$JSON_TMP"
     
     HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
     BODY=$(echo "$RESPONSE" | sed '$d')
