@@ -671,27 +671,8 @@ export default {
     justify-content: center;
   }
   
-  .table-container {
-    padding: 0;
-    overflow-x: visible;
-  }
-  
-  /* Скрываем десктопную таблицу на мобильных */
-  .desktop-table {
-    display: none;
-  }
-  
-  /* Показываем мобильные карточки */
-  .mobile-cards {
-    display: block;
+  .translations-container {
     padding: 15px;
-  }
-  
-  .action-btn {
-    padding: 8px 12px;
-    font-size: 16px;
-    min-width: 44px;
-    min-height: 44px;
   }
   
   .modal {
