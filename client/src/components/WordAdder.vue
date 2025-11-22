@@ -249,11 +249,8 @@ export default {
             this.message = ''
           } else {
             this.existingTranslation = null
-            
-            // Автоматически запрашиваем перевод через 0.7 секунды
-            this.autoTranslateTimeout = setTimeout(() => {
-              this.getAutoTranslation()
-            }, 700)
+            // Автоперевод отключен из-за проблем с CORS
+            // Пользователь может нажать кнопку "Автоперевод" вручную
           }
         } catch (error) {
           console.error('Ошибка при проверке:', error)
@@ -403,7 +400,8 @@ export default {
         this.autoTranslationDone = true
         this.showMessage('Автоперевод завершен', 'success')
       } catch (error) {
-        console.error('Ошибка при автопереводе через LibreTranslate:', error)
+        // Тихая обработка ошибок CORS - пробуем альтернативный API
+        // Не логируем в консоль, так как это ожидаемая ошибка
         
         // Пробуем альтернативный API
         try {
@@ -456,8 +454,9 @@ export default {
             throw new Error('Нет данных перевода')
           }
         } catch (altError) {
-          console.error('Ошибка при автопереводе через альтернативный API:', altError)
-          this.showMessage('Не удалось выполнить автоперевод. Введите перевод вручную.', 'error')
+          // Тихая обработка ошибок - не показываем сообщение об ошибке, если автоперевод не работает
+          // Пользователь может ввести перевод вручную
+          // Не логируем в консоль, так как это ожидаемая ошибка
         }
       } finally {
         this.autoTranslationLoading = false
