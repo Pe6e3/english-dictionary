@@ -184,7 +184,7 @@ $LAST_COMMIT_BODY
         # Сохраняем сообщение во временный файл для надежной передачи
         MSG_TMP=$(mktemp)
         printf '%s' "$MESSAGE" > "$MSG_TMP"
-        JSON_DATA=$(python3 -c "import json; f=open('$MSG_TMP', 'r', encoding='utf-8'); msg=f.read(); f.close(); print(json.dumps({'massage': msg}, ensure_ascii=False))" 2>/dev/null)
+        JSON_DATA=$(python3 -c "import json; f=open('$MSG_TMP', 'r', encoding='utf-8'); msg=f.read(); f.close(); print(json.dumps({'message': msg}, ensure_ascii=False))" 2>/dev/null)
         rm -f "$MSG_TMP"
     else
         # Fallback: простое экранирование
