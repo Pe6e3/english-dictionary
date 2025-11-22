@@ -271,17 +271,41 @@ app.post('/api/deploy', (req, res) => {
   // Запускаем деплой в фоновом режиме (после отправки ответа)
   const { exec } = require('child_process');
   const deployScript = '/var/www/english/auto-deploy.sh';
+  const path = require('path');
   
-  exec(`bash ${deployScript}`, (error, stdout, stderr) => {
+  console.log(`[${new Date().toISOString()}] Запуск деплоя через webhook...`);
+  
+  // Запускаем скрипт с правильной рабочей директорией и переменными окружения
+  exec(`bash ${deployScript}`, {
+    cwd: '/var/www/english',
+    env: { ...process.env, PATH: process.env.PATH },
+    maxBuffer: 10 * 1024 * 1024 // 10MB
+  }, (error, stdout, stderr) => {
+    const timestamp = new Date().toISOString();
+    
     if (error) {
-      console.error('Ошибка деплоя:', error);
-      console.error('Stderr:', stderr);
+      console.error(`[${timestamp}] Ошибка деплоя:`, error);
+      if (stderr) {
+        console.error(`[${timestamp}] Stderr:`, stderr);
+      }
       return;
     }
     
-    console.log('Деплой завершен успешно');
+    console.log(`[${timestamp}] Деплой завершен успешно`);
     if (stdout) {
-      console.log('Вывод:', stdout);
+      // Логируем вывод построчно для лучшей читаемости
+      stdout.split('\n').forEach(line => {
+        if (line.trim()) {
+          console.log(`[${timestamp}] ${line}`);
+        }
+      });
+    }
+    if (stderr) {
+      stderr.split('\n').forEach(line => {
+        if (line.trim()) {
+          console.error(`[${timestamp}] ${line}`);
+        }
+      });
     }
   });
 });
