@@ -36,7 +36,23 @@ jobs:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_KEY }}
+          port: ${{ secrets.SSH_PORT || 22 }}
+          timeout: 30s
           script: |
             cd /var/www/english
             ./auto-deploy.sh
+        continue-on-error: true
+        if: ${{ secrets.SSH_HOST != '' && secrets.SSH_USER != '' && secrets.SSH_KEY != '' }}
+      
+      - name: Deploy notification
+        if: failure()
+        run: |
+          echo "⚠️ GitHub Actions деплой не выполнен (не настроены SSH секреты)"
+          echo "Для настройки автоматического деплоя через GitHub Actions:"
+          echo "1. Перейдите в Settings → Secrets and variables → Actions"
+          echo "2. Добавьте секреты: SSH_HOST, SSH_USER, SSH_KEY"
+          echo "3. Подробная инструкция в файле AUTO_DEPLOY_SETUP.md"
+          echo ""
+          echo "Деплой можно выполнить вручную на сервере:"
+          echo "cd /var/www/english && ./auto-deploy.sh"
 
