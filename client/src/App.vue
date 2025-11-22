@@ -6,7 +6,7 @@
           🏠 Добавить слово
         </RouterLink>
         <RouterLink to="/dictionary" class="nav-link" active-class="active">
-          📚 Словарь
+          📚 Словарь.
         </RouterLink>
         <button class="theme-toggle" @click="toggleTheme" :title="isDark ? 'Переключить на светлую тему' : 'Переключить на темную тему'">
           {{ isDark ? '☀️' : '🌙' }}
