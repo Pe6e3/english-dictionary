@@ -8,6 +8,9 @@
         <RouterLink to="/dictionary" class="nav-link" active-class="active" title="Словарь">
           📚
         </RouterLink>
+        <div class="translations-count" title="Количество переводов">
+          <span class="count-badge">{{ translationsCount }}</span>
+        </div>
         <button class="theme-toggle" @click="toggleTheme" :title="isDark ? 'Переключить на светлую тему' : 'Переключить на темную тему'">
           {{ isDark ? '☀️' : '🌙' }}
         </button>
@@ -28,21 +31,63 @@ export default {
   data() {
     return {
       isDark: true,
-      isAuthenticated: false
+      isAuthenticated: false,
+      translationsCount: 0
+    }
+  },
+  computed: {
+    apiBaseUrl() {
+      return '/english-api/api'
+    },
+    currentUsername() {
+      const user = authService.getCurrentUser()
+      return user ? user.username : null
     }
   },
   watch: {
     '$route'() {
       this.checkAuth()
+      if (this.isAuthenticated) {
+        this.loadTranslationsCount()
+      }
     }
   },
   mounted() {
     this.initTheme()
     this.checkAuth()
+    if (this.isAuthenticated) {
+      this.loadTranslationsCount()
+    }
+    
+    // Слушаем события обновления счетчика
+    this.$root.$on('update-translations-count', () => {
+      this.loadTranslationsCount()
+    })
+  },
+  beforeDestroy() {
+    this.$root.$off('update-translations-count')
   },
   methods: {
     checkAuth() {
       this.isAuthenticated = authService.isAuthenticated()
+      if (this.isAuthenticated) {
+        this.loadTranslationsCount()
+      } else {
+        this.translationsCount = 0
+      }
+    },
+    async loadTranslationsCount() {
+      if (!this.currentUsername) return
+      
+      try {
+        const response = await fetch(`${this.apiBaseUrl}/translations?username=${encodeURIComponent(this.currentUsername)}`)
+        if (response.ok) {
+          const data = await response.json()
+          this.translationsCount = data.length
+        }
+      } catch (error) {
+        console.error('Ошибка при загрузке количества переводов:', error)
+      }
     },
     handleLogout() {
       authService.logout()
@@ -186,6 +231,24 @@ body {
   transform: translateY(-1px);
 }
 
+.translations-count {
+  margin-left: auto;
+  margin-right: 8px;
+  display: flex;
+  align-items: center;
+}
+
+.count-badge {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-weight: 700;
+  font-size: 14px;
+  min-width: 32px;
+  text-align: center;
+}
+
 @media (max-width: 768px) {
   .nav-container {
     gap: 6px;
@@ -199,6 +262,16 @@ body {
     height: 36px;
     padding: 6px 10px;
     font-size: 18px;
+  }
+  
+  .translations-count {
+    margin-right: 4px;
+  }
+  
+  .count-badge {
+    font-size: 12px;
+    padding: 3px 8px;
+    min-width: 28px;
   }
 }
 </style>

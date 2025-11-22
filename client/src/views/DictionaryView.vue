@@ -11,10 +11,6 @@
             class="search-input"
           />
         </div>
-        <div class="stats-compact">
-          <span class="stat-badge">{{ allItems.length }}</span>
-          <span class="stat-label">всего</span>
-        </div>
       </div>
 
       <!-- Карточки переводов -->
@@ -151,10 +147,15 @@ export default {
     },
     allItems() {
       // Добавляем состояние показа перевода к каждому элементу
-      return this.translations.map(item => ({ 
-        ...item, 
-        showTranslation: this.showTranslationMap[item.id] || false
-      }))
+      return this.translations.map(item => {
+        const baseItem = { 
+          ...item, 
+          showTranslation: this.showTranslationMap[item.id] || false
+        }
+        // Сохраняем ссылку на оригинальный элемент для редактирования
+        baseItem._original = item
+        return baseItem
+      })
     },
     filteredItems() {
       if (!this.searchQuery.trim()) return this.allItems
@@ -184,27 +185,37 @@ export default {
     },
 
     toggleTranslation(item) {
-      if (!item.editing) {
-        this.showTranslationMap[item.id] = !this.showTranslationMap[item.id]
-      }
+      // Находим оригинальный элемент для проверки editing
+      const originalItem = item._original || this.translations.find(t => t.id === item.id)
+      if (!originalItem || originalItem.editing) return
+      
+      this.showTranslationMap[item.id] = !this.showTranslationMap[item.id]
     },
     
     startEdit(item) {
+      // Находим оригинальный элемент в массиве translations
+      const originalItem = item._original || this.translations.find(t => t.id === item.id)
+      if (!originalItem) return
+      
       // Создаем копии для редактирования
-      item.editing = true
-      item.editEnglish = item.english_text
-      item.editRussian = item.russian_translation
+      originalItem.editing = true
+      originalItem.editEnglish = originalItem.english_text
+      originalItem.editRussian = originalItem.russian_translation
     },
 
     async saveEdit(item) {
+      // Находим оригинальный элемент в массиве translations
+      const originalItem = item._original || this.translations.find(t => t.id === item.id)
+      if (!originalItem) return
+      
       try {
         const body = { 
-          englishText: item.editEnglish.trim(), 
-          russianTranslation: item.editRussian.trim(), 
+          englishText: originalItem.editEnglish.trim(), 
+          russianTranslation: originalItem.editRussian.trim(), 
           username: this.currentUsername 
         }
 
-        const response = await fetch(`${this.apiBaseUrl}/update-translation/${item.id}`, {
+        const response = await fetch(`${this.apiBaseUrl}/update-translation/${originalItem.id}`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json'
@@ -214,14 +225,16 @@ export default {
 
         if (response.ok) {
           // Обновляем данные в локальном массиве
-          item.english_text = item.editEnglish.trim()
-          item.russian_translation = item.editRussian.trim()
+          originalItem.english_text = originalItem.editEnglish.trim()
+          originalItem.russian_translation = originalItem.editRussian.trim()
           
           // Выходим из режима редактирования
-          item.editing = false
-          delete item.editEnglish
-          delete item.editRussian
-          delete item.editing
+          originalItem.editing = false
+          delete originalItem.editEnglish
+          delete originalItem.editRussian
+          
+          // Обновляем счетчик в навигации
+          this.$root.$emit('update-translations-count')
         } else {
           const errorData = await response.json()
           alert(`Ошибка при обновлении: ${errorData.error}`)
@@ -233,11 +246,14 @@ export default {
     },
 
     cancelEdit(item) {
+      // Находим оригинальный элемент в массиве translations
+      const originalItem = item._original || this.translations.find(t => t.id === item.id)
+      if (!originalItem) return
+      
       // Отменяем редактирование
-      item.editing = false
-      delete item.editEnglish
-      delete item.editRussian
-      delete item.editing
+      originalItem.editing = false
+      delete originalItem.editEnglish
+      delete originalItem.editRussian
     },
 
     confirmDelete(item) {
@@ -261,6 +277,9 @@ export default {
         if (response.ok) {
           // Удаляем из локального массива
           this.translations = this.translations.filter(t => t.id !== this.itemToDelete.id)
+          
+          // Обновляем счетчик в навигации
+          this.$root.$emit('update-translations-count')
           
           this.closeDeleteModal()
         } else {
@@ -441,19 +460,19 @@ export default {
 }
 
 .item-action-btn {
-  padding: 4px 8px;
+  padding: 2px 6px;
   border: none;
   border-radius: 6px;
   cursor: pointer;
   transition: all 0.2s ease;
-  font-size: 14px;
+  font-size: 12px;
   background: #f7fafc;
   border: 1px solid #e2e8f0;
   display: flex;
   align-items: center;
   justify-content: center;
-  min-width: 28px;
-  height: 28px;
+  min-width: 24px;
+  height: 24px;
 }
 
 .item-action-btn.edit:hover {

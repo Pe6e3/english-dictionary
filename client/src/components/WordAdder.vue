@@ -248,6 +248,9 @@ export default {
         this.translationOptions = []
         this.selectedTranslationIndex = 0
         
+        // Обновляем счетчик в навигации
+        this.$root.$emit('update-translations-count')
+        
         // Фокус на поле ввода английского языка после сохранения
         this.$nextTick(() => {
           this.focusEnglishInput()
