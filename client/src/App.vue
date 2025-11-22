@@ -9,7 +9,7 @@
           🏠 Добавить слово
         </RouterLink>
         <RouterLink to="/dictionary" class="nav-link" active-class="active">
-          📚 Словарь//
+          📚 Словарь//!
         </RouterLink>
       </div>
     </nav>
