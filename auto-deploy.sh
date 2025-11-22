@@ -163,12 +163,19 @@ deploy_client() {
     # Установка зависимостей
     if [ -f "package.json" ]; then
         log_info "Установка зависимостей клиента..."
-        # Устанавливаем зависимости без --silent, чтобы видеть все ошибки
-        npm install --legacy-peer-deps 2>&1 | grep -E "(added|removed|changed|up to date|audited)" || true
+        # Устанавливаем зависимости
+        npm install --legacy-peer-deps 2>&1 | grep -E "(added|removed|changed|up to date|audited|vite)" || true
+        
         # Проверяем, что vite установлен
-        if [ ! -f "node_modules/.bin/vite" ]; then
-            log_warn "⚠️  vite не найден, переустанавливаем зависимости..."
-            npm install --legacy-peer-deps 2>&1 | tail -5 || true
+        if [ ! -f "node_modules/.bin/vite" ] && [ ! -f "node_modules/vite/bin/vite.js" ]; then
+            log_warn "⚠️  vite не найден, принудительно переустанавливаем зависимости..."
+            npm install vite --legacy-peer-deps --save-dev 2>&1 | tail -10 || true
+        fi
+        
+        # Убеждаемся, что PATH содержит node_modules/.bin
+        if [ -d "node_modules/.bin" ]; then
+            export PATH="$PWD/node_modules/.bin:$PATH"
+            log_info "PATH обновлен для node_modules/.bin"
         fi
         
         # Сборка проекта
