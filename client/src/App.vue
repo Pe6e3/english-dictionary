@@ -2,17 +2,17 @@
   <div id="app">
     <nav v-if="isAuthenticated" class="navigation">
       <div class="nav-container">
+        <RouterLink to="/" class="nav-link" active-class="active" title="Добавить слово">
+          🏠
+        </RouterLink>
+        <RouterLink to="/dictionary" class="nav-link" active-class="active" title="Словарь">
+          📚
+        </RouterLink>
         <button class="theme-toggle" @click="toggleTheme" :title="isDark ? 'Переключить на светлую тему' : 'Переключить на темную тему'">
           {{ isDark ? '☀️' : '🌙' }}
         </button>
-        <RouterLink to="/" class="nav-link" active-class="active">
-          🏠 Добавить слово
-        </RouterLink>
-        <RouterLink to="/dictionary" class="nav-link" active-class="active">
-          📚 Словарь
-        </RouterLink>
         <button class="logout-btn" @click="handleLogout" title="Выйти">
-          🚪 Выйти
+          🚪
         </button>
       </div>
     </nav>
@@ -99,7 +99,7 @@ body {
 
 .navigation {
   background: linear-gradient(135deg, #2d3748 0%, #4a5568 100%);
-  padding: 15px 0;
+  padding: 8px 0;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   position: sticky;
   top: 0;
@@ -110,45 +110,26 @@ body {
   max-width: 1200px;
   margin: 0 auto;
   display: flex;
-  gap: 20px;
-  padding: 0 20px;
+  gap: 8px;
+  padding: 0 12px;
   align-items: center;
-  position: relative;
-}
-
-.theme-toggle {
-  position: absolute;
-  top: 10px;
-  right: 20px;
-  background: rgba(255, 255, 255, 0.1);
-  border: none;
-  color: white;
-  font-size: 24px;
-  padding: 8px 12px;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 44px;
-  height: 44px;
-  z-index: 10;
-}
-
-.theme-toggle:hover {
-  background: rgba(255, 255, 255, 0.2);
-  transform: translateY(-1px);
+  justify-content: flex-start;
 }
 
 .nav-link {
   color: white;
   text-decoration: none;
-  padding: 12px 20px;
+  padding: 8px 12px;
   border-radius: 8px;
   font-weight: 600;
   transition: all 0.3s ease;
   background: rgba(255, 255, 255, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 40px;
+  height: 40px;
+  font-size: 20px;
 }
 
 .nav-link:hover {
@@ -161,17 +142,43 @@ body {
   box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
 }
 
-.logout-btn {
+.theme-toggle {
   margin-left: auto;
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  color: white;
+  font-size: 20px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 40px;
+  height: 40px;
+}
+
+.theme-toggle:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: translateY(-1px);
+}
+
+.logout-btn {
   background: rgba(239, 68, 68, 0.2);
   border: 1px solid rgba(239, 68, 68, 0.4);
   color: white;
-  padding: 12px 20px;
+  padding: 8px 12px;
   border-radius: 8px;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.3s ease;
-  font-size: 14px;
+  font-size: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 40px;
+  height: 40px;
 }
 
 .logout-btn:hover {
@@ -181,24 +188,17 @@ body {
 
 @media (max-width: 768px) {
   .nav-container {
-    flex-direction: column;
-    gap: 10px;
-    padding-bottom: 60px;
+    gap: 6px;
+    padding: 0 8px;
   }
   
-  .nav-link {
-    text-align: center;
-  }
-  
-  .theme-toggle {
-    position: absolute;
-    top: 10px;
-    right: 20px;
-  }
-  
+  .nav-link,
+  .theme-toggle,
   .logout-btn {
-    margin-left: 0;
-    width: 100%;
+    min-width: 36px;
+    height: 36px;
+    padding: 6px 10px;
+    font-size: 18px;
   }
 }
 </style>
