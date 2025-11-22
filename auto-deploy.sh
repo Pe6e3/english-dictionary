@@ -168,14 +168,14 @@ deploy_client() {
         # Сборка проекта
         if grep -q "\"build\"" package.json; then
             log_info "Сборка клиента..."
-            # Используем npm run build вместо прямого вызова vite для правильного PATH
-            BUILD_OUTPUT=$(npm run build 2>&1)
+            # Используем npx для запуска vite, чтобы гарантировать правильный PATH
+            BUILD_OUTPUT=$(npx vite build 2>&1)
             BUILD_EXIT_CODE=$?
             
             if [ $BUILD_EXIT_CODE -eq 0 ]; then
                 log_success "✅ Клиент собран"
                 # Показываем краткую информацию о сборке
-                echo "$BUILD_OUTPUT" | grep -E "(built|dist|assets)" | head -5 || true
+                echo "$BUILD_OUTPUT" | grep -E "(built|dist|assets|✓)" | head -5 || true
             else
                 log_error "❌ Ошибка сборки клиента"
                 echo "$BUILD_OUTPUT" | tail -20
