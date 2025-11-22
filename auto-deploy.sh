@@ -163,7 +163,9 @@ deploy_client() {
     # Установка зависимостей
     if [ -f "package.json" ]; then
         log_info "Установка зависимостей клиента..."
-        # Устанавливаем зависимости
+        # Убеждаемся, что devDependencies будут установлены
+        export NODE_ENV=development
+        # Устанавливаем зависимости (включая devDependencies)
         npm install --legacy-peer-deps 2>&1 | grep -E "(added|removed|changed|up to date|audited|vite)" || true
         
         # Проверяем, что vite установлен
