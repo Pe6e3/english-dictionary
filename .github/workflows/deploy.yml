@@ -31,6 +31,7 @@ jobs:
           echo "═══════════════════════════════════════════════════════════"
       
       - name: Deploy to server via SSH
+        id: deploy
         uses: appleboy/ssh-action@v0.1.7
         with:
           host: ${{ secrets.SSH_HOST }}
@@ -43,8 +44,57 @@ jobs:
             ./auto-deploy.sh
         continue-on-error: true
       
-      - name: Deploy notification
-        if: failure() && steps['Deploy to server via SSH'].outcome == 'failure'
+      - name: Send deployment notification
+        if: always()
+        run: |
+          COMMIT_SHORT=$(git log -1 --format='%h')
+          COMMIT_FULL=$(git log -1 --format='%H')
+          COMMIT_MSG=$(git log -1 --format='%s')
+          COMMIT_BODY=$(git log -1 --format='%B' | sed '/^$/d' | head -5 | tr '\n' '; ')
+          COMMIT_DATE=$(git log -1 --format='%cd' --date=format:'%Y-%m-%d %H:%M:%S')
+          COMMIT_AUTHOR=$(git log -1 --format='%an')
+          BRANCH=$(git branch --show-current)
+          
+          if [ "${{ steps.deploy.outcome }}" == "success" ]; then
+            STATUS="✅ Успешно"
+            DETAILS="Деплой выполнен через GitHub Actions"
+          else
+            STATUS="⚠️ Не выполнен"
+            DETAILS="Деплой через GitHub Actions не выполнен (проблема с SSH подключением). Деплой можно выполнить вручную на сервере: cd /var/www/english && ./auto-deploy.sh"
+          fi
+          
+          MESSAGE="Деплой English: $STATUS
+
+📦 Информация о версии:
+• Коммит: $COMMIT_SHORT ($COMMIT_FULL)
+• Сообщение: $COMMIT_MSG
+• Автор: $COMMIT_AUTHOR
+• Дата коммита: $COMMIT_DATE
+• Ветка: $BRANCH
+
+📝 Текст коммита:
+$COMMIT_BODY
+
+🔄 Статус деплоя:
+$DETAILS
+
+⏰ Время: $(date '+%Y-%m-%d %H:%M:%S')"
+          
+          # Формируем JSON и отправляем уведомление
+          JSON_DATA=$(python3 <<PYEOF
+import json
+message = """$MESSAGE"""
+print(json.dumps({"message": message}, ensure_ascii=False))
+PYEOF
+)
+          
+          curl -s -X POST \
+            -H "Content-Type: application/json" \
+            -d "$JSON_DATA" \
+            "https://stage.istransit.kz/api/terminals/v01/send_log/" || echo "Не удалось отправить уведомление"
+      
+      - name: Deploy notification (fallback)
+        if: failure() && steps.deploy.outcome == 'failure'
         run: |
           echo "⚠️ GitHub Actions деплой не выполнен"
           echo "Проверьте:"
@@ -53,7 +103,4 @@ jobs:
           echo "3. Доступность сервера по SSH"
           echo ""
           echo "Подробная инструкция в файле AUTO_DEPLOY_SETUP.md"
-          echo ""
-          echo "Деплой можно выполнить вручную на сервере:"
-          echo "cd /var/www/english && ./auto-deploy.sh"
 
