@@ -72,7 +72,10 @@ jobs:
           
           if [ "${{ steps.deploy_ssh.outcome }}" == "success" ]; then
             STATUS="✅ Успешно"
-            DETAILS="Деплой выполнен через GitHub Actions"
+            DETAILS="Деплой выполнен через GitHub Actions (SSH)"
+          elif [ "${{ steps.deploy_webhook.outcome }}" == "success" ]; then
+            STATUS="✅ Успешно"
+            DETAILS="Деплой выполнен через GitHub Actions (Webhook fallback)"
           else
             STATUS="⚠️ Не выполнен"
             DETAILS="Деплой через GitHub Actions не выполнен (проблема с SSH подключением). Деплой можно выполнить вручную на сервере: cd /var/www/english && ./auto-deploy.sh"
@@ -93,15 +96,4 @@ jobs:
               -d "$JSON_DATA" \
               "https://stage.istransit.kz/api/terminals/v01/send_log/" || echo "Не удалось отправить уведомление"
           fi
-      
-      - name: Deploy notification (fallback)
-        if: failure() && steps.deploy_ssh.outcome == 'failure'
-        run: |
-          echo "⚠️ GitHub Actions деплой не выполнен"
-          echo "Проверьте:"
-          echo "1. Настроены ли секреты: SSH_HOST, SSH_USER, SSH_KEY"
-          echo "2. Правильность значений секретов"
-          echo "3. Доступность сервера по SSH"
-          echo ""
-          echo "Подробная инструкция в файле AUTO_DEPLOY_SETUP.md"
 
