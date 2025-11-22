@@ -2,6 +2,9 @@
   <div id="app">
     <nav v-if="isAuthenticated" class="navigation">
       <div class="nav-container">
+        <div class="user-info">
+          <span class="username">{{ currentUsername }}</span>
+        </div>
         <div class="translations-count" title="Количество переводов">
           <span class="count-badge">{{ translationsCount }}</span>
         </div>
@@ -178,8 +181,28 @@ body {
   box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
 }
 
-.theme-toggle {
+.user-info {
+  display: flex;
+  align-items: center;
+  color: white;
+  font-weight: 600;
+  font-size: 14px;
+  padding: 0 8px;
+}
+
+.username {
+  color: white;
+  text-transform: capitalize;
+}
+
+.translations-count {
   margin-left: auto;
+  margin-right: 8px;
+  display: flex;
+  align-items: center;
+}
+
+.theme-toggle {
   background: rgba(255, 255, 255, 0.1);
   border: none;
   color: white;
@@ -222,13 +245,6 @@ body {
   transform: translateY(-1px);
 }
 
-.translations-count {
-  margin-left: auto;
-  margin-right: 8px;
-  display: flex;
-  align-items: center;
-}
-
 .count-badge {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
@@ -244,6 +260,11 @@ body {
   .nav-container {
     gap: 6px;
     padding: 0 8px;
+  }
+  
+  .user-info {
+    font-size: 12px;
+    padding: 0 4px;
   }
   
   .nav-link,

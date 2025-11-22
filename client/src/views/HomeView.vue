@@ -45,27 +45,27 @@
                 class="auto-translate-btn"
                 @click="getAutoTranslation"
                 :disabled="!englishInput.trim()"
+                title="Автоперевод"
               >
                 <span class="translate-icon">🌐</span>
-                Автоперевод
               </button>
               <button 
                 v-if="autoTranslationLoading"
                 type="button"
                 class="auto-translate-btn loading"
                 disabled
+                title="Перевод..."
               >
                 <span class="loading-spinner"></span>
-                Перевод...
               </button>
               <button 
                 v-if="autoTranslationDone"
                 type="button"
                 class="auto-translate-btn success"
                 disabled
+                title="Переведено"
               >
                 <span class="success-icon">✅</span>
-                Переведено
               </button>
             </div>
           </div>
@@ -718,7 +718,7 @@ export default {
 
 .translation-input-container input {
   flex: 1;
-  padding-right: 120px;
+  padding-right: 50px;
 }
 
 .auto-translate-btn {
@@ -726,10 +726,10 @@ export default {
   right: 10px;
   top: 50%;
   transform: translateY(-50%);
-  padding: 8px 15px;
+  padding: 8px;
   border: none;
   border-radius: 8px;
-  font-size: 12px;
+  font-size: 16px;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.3s ease;
@@ -737,9 +737,11 @@ export default {
   color: white;
   display: flex;
   align-items: center;
-  gap: 6px;
+  justify-content: center;
   z-index: 1;
-  white-space: nowrap;
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
 }
 
 .auto-translate-btn:hover:not(:disabled) {
