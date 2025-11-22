@@ -63,7 +63,13 @@ jobs:
             DETAILS="Деплой через GitHub Actions не выполнен (проблема с SSH подключением). Деплой можно выполнить вручную на сервере: cd /var/www/english && ./auto-deploy.sh"
           fi
           
-          MESSAGE="Деплой English: $STATUS
+          # Формируем сообщение
+          DEPLOY_TIME=$(date '+%Y-%m-%d %H:%M:%S')
+          
+          # Создаем временный файл для сообщения
+          MSG_FILE=$(mktemp)
+          cat > "$MSG_FILE" <<EOF
+Деплой English: $STATUS
 
 📦 Информация о версии:
 • Коммит: $COMMIT_SHORT ($COMMIT_FULL)
@@ -78,15 +84,12 @@ $COMMIT_BODY
 🔄 Статус деплоя:
 $DETAILS
 
-⏰ Время: $(date '+%Y-%m-%d %H:%M:%S')"
+⏰ Время: $DEPLOY_TIME
+EOF
           
           # Формируем JSON и отправляем уведомление
-          JSON_DATA=$(python3 <<PYEOF
-import json
-message = """$MESSAGE"""
-print(json.dumps({"message": message}, ensure_ascii=False))
-PYEOF
-)
+          JSON_DATA=$(python3 -c "import json; f=open('$MSG_FILE', 'r', encoding='utf-8'); msg=f.read(); f.close(); print(json.dumps({'message': msg}, ensure_ascii=False))" 2>/dev/null)
+          rm -f "$MSG_FILE"
           
           curl -s -X POST \
             -H "Content-Type: application/json" \
