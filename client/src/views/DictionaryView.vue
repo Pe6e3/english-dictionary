@@ -235,7 +235,8 @@ export default {
       phrases: [],
       searchQuery: '',
       showDeleteModal: false,
-      itemToDelete: null
+      itemToDelete: null,
+      showTranslationMap: {} // Хранит состояние показа перевода для каждого элемента
     }
   },
   computed: {
@@ -245,8 +246,16 @@ export default {
     },
     allItems() {
       // Объединяем слова и фразы в один массив
-      const wordsWithType = this.words.map(item => ({ ...item, itemType: 'word' }))
-      const phrasesWithType = this.phrases.map(item => ({ ...item, itemType: 'phrase' }))
+      const wordsWithType = this.words.map(item => ({ 
+        ...item, 
+        itemType: 'word',
+        showTranslation: this.showTranslationMap[item.id] || false
+      }))
+      const phrasesWithType = this.phrases.map(item => ({ 
+        ...item, 
+        itemType: 'phrase',
+        showTranslation: this.showTranslationMap[item.id] || false
+      }))
       return [...wordsWithType, ...phrasesWithType]
     },
     filteredItems() {
@@ -284,11 +293,11 @@ export default {
     },
 
     showTranslation(item) {
-      item.showTranslation = true
+      this.showTranslationMap[item.id] = true
     },
     
     hideTranslation(item) {
-      item.showTranslation = false
+      this.showTranslationMap[item.id] = false
     },
     
     startEdit(item) {
