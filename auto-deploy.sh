@@ -132,6 +132,74 @@ deploy_client() {
     fi
 }
 
+# Отправка уведомления о деплое
+send_deploy_notification() {
+    log_info "📤 Отправка уведомления о деплое..."
+    
+    cd "$ENGLISH_DIR"
+    
+    # Получаем информацию о деплое
+    LAST_COMMIT=$(git log -1 --format="%H")
+    LAST_COMMIT_SHORT=$(git log -1 --format="%h")
+    LAST_COMMIT_MSG=$(git log -1 --format="%s")
+    LAST_COMMIT_DATE=$(git log -1 --format="%cd" --date=format:"%Y-%m-%d %H:%M:%S")
+    LAST_COMMIT_AUTHOR=$(git log -1 --format="%an")
+    CURRENT_BRANCH=$(git branch --show-current)
+    
+    # Получаем статус PM2
+    PM2_INFO=$(pm2 info english-backend 2>/dev/null | grep -E "(status|uptime|memory|cpu|restarts)" | head -5 | tr '\n' '; ' || echo "status: unknown")
+    PM2_STATUS=$(echo "$PM2_INFO" | sed 's/; $//')
+    
+    # Получаем информацию о сервере
+    SERVER_HOSTNAME=$(hostname)
+    SERVER_IP=$(hostname -I | awk '{print $1}')
+    DEPLOY_TIME=$(date '+%Y-%m-%d %H:%M:%S')
+    
+    # Формируем сообщение (экранируем для JSON)
+    MESSAGE="Деплой English произведён успешно!
+
+📦 Информация о версии:
+• Коммит: $LAST_COMMIT_SHORT ($LAST_COMMIT)
+• Сообщение: $LAST_COMMIT_MSG
+• Автор: $LAST_COMMIT_AUTHOR
+• Дата коммита: $LAST_COMMIT_DATE
+• Ветка: $CURRENT_BRANCH
+
+🖥️ Информация о сервере:
+• Хост: $SERVER_HOSTNAME
+• IP: $SERVER_IP
+• Время деплоя: $DEPLOY_TIME
+
+📊 Статус PM2:
+• $PM2_STATUS
+
+✅ Все компоненты успешно обновлены и перезапущены."
+
+    # Экранируем сообщение для JSON (заменяем кавычки и переносы строк)
+    MESSAGE_ESCAPED=$(echo "$MESSAGE" | sed 's/\\/\\\\/g' | sed 's/"/\\"/g' | sed ':a;N;$!ba;s/\n/\\n/g')
+    
+    # Формируем JSON
+    JSON_DATA="{\"massage\": \"$MESSAGE_ESCAPED\"}"
+    
+    # Отправляем POST запрос
+    RESPONSE=$(curl -s -w "\n%{http_code}" -X POST \
+        -H "Content-Type: application/json" \
+        -d "$JSON_DATA" \
+        "https://stage.istransit.kz/api/terminals/v01/send_log/" 2>&1)
+    
+    HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+    BODY=$(echo "$RESPONSE" | sed '$d')
+    
+    if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "201" ]; then
+        log_success "✅ Уведомление отправлено успешно (HTTP $HTTP_CODE)"
+    else
+        log_warn "⚠️  Не удалось отправить уведомление (HTTP $HTTP_CODE)"
+        if [ -n "$BODY" ]; then
+            log_warn "Ответ сервера: $BODY"
+        fi
+    fi
+}
+
 # Основная логика
 main() {
     echo ""
@@ -152,6 +220,9 @@ main() {
     
     log_success "✅ Автоматический деплой завершен успешно!"
     echo ""
+    
+    # Отправляем уведомление о деплое
+    send_deploy_notification
 }
 
 # Запуск
