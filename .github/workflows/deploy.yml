@@ -54,6 +54,7 @@ jobs:
           COMMIT_DATE=$(git log -1 --format='%cd' --date=format:'%Y-%m-%d %H:%M:%S')
           COMMIT_AUTHOR=$(git log -1 --format='%an')
           BRANCH=$(git branch --show-current)
+          DEPLOY_TIME=$(date '+%Y-%m-%d %H:%M:%S')
           
           if [ "${{ steps.deploy_ssh.outcome }}" == "success" ]; then
             STATUS="✅ Успешно"
@@ -63,38 +64,21 @@ jobs:
             DETAILS="Деплой через GitHub Actions не выполнен (проблема с SSH подключением). Деплой можно выполнить вручную на сервере: cd /var/www/english && ./auto-deploy.sh"
           fi
           
-          # Формируем сообщение
-          DEPLOY_TIME=$(date '+%Y-%m-%d %H:%M:%S')
-          
-          # Создаем временный файл для сообщения
+          # Формируем сообщение через printf для избежания проблем с YAML
           MSG_FILE=$(mktemp)
-          cat > "$MSG_FILE" <<EOF
-Деплой English: $STATUS
-
-📦 Информация о версии:
-• Коммит: $COMMIT_SHORT ($COMMIT_FULL)
-• Сообщение: $COMMIT_MSG
-• Автор: $COMMIT_AUTHOR
-• Дата коммита: $COMMIT_DATE
-• Ветка: $BRANCH
-
-📝 Текст коммита:
-$COMMIT_BODY
-
-🔄 Статус деплоя:
-$DETAILS
-
-⏰ Время: $DEPLOY_TIME
-EOF
+          printf 'Деплой English: %s\n\n📦 Информация о версии:\n• Коммит: %s (%s)\n• Сообщение: %s\n• Автор: %s\n• Дата коммита: %s\n• Ветка: %s\n\n📝 Текст коммита:\n%s\n\n🔄 Статус деплоя:\n%s\n\n⏰ Время: %s\n' \
+            "$STATUS" "$COMMIT_SHORT" "$COMMIT_FULL" "$COMMIT_MSG" "$COMMIT_AUTHOR" "$COMMIT_DATE" "$BRANCH" "$COMMIT_BODY" "$DETAILS" "$DEPLOY_TIME" > "$MSG_FILE"
           
           # Формируем JSON и отправляем уведомление
           JSON_DATA=$(python3 -c "import json; f=open('$MSG_FILE', 'r', encoding='utf-8'); msg=f.read(); f.close(); print(json.dumps({'message': msg}, ensure_ascii=False))" 2>/dev/null)
           rm -f "$MSG_FILE"
           
-          curl -s -X POST \
-            -H "Content-Type: application/json" \
-            -d "$JSON_DATA" \
-            "https://stage.istransit.kz/api/terminals/v01/send_log/" || echo "Не удалось отправить уведомление"
+          if [ -n "$JSON_DATA" ] && [ "${#JSON_DATA}" -gt 20 ]; then
+            curl -s -X POST \
+              -H "Content-Type: application/json" \
+              -d "$JSON_DATA" \
+              "https://stage.istransit.kz/api/terminals/v01/send_log/" || echo "Не удалось отправить уведомление"
+          fi
       
       - name: Deploy notification (fallback)
         if: failure() && steps.deploy_ssh.outcome == 'failure'
