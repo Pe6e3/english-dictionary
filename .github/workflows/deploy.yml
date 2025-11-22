@@ -31,7 +31,7 @@ jobs:
           echo "═══════════════════════════════════════════════════════════"
       
       - name: Deploy to server via SSH
-        id: deploy
+        id: deploy_ssh
         uses: appleboy/ssh-action@v0.1.7
         with:
           host: ${{ secrets.SSH_HOST }}
@@ -55,7 +55,7 @@ jobs:
           COMMIT_AUTHOR=$(git log -1 --format='%an')
           BRANCH=$(git branch --show-current)
           
-          if [ "${{ steps.deploy.outcome }}" == "success" ]; then
+          if [ "${{ steps.deploy_ssh.outcome }}" == "success" ]; then
             STATUS="✅ Успешно"
             DETAILS="Деплой выполнен через GitHub Actions"
           else
@@ -94,7 +94,7 @@ PYEOF
             "https://stage.istransit.kz/api/terminals/v01/send_log/" || echo "Не удалось отправить уведомление"
       
       - name: Deploy notification (fallback)
-        if: failure() && steps.deploy.outcome == 'failure'
+        if: failure() && steps.deploy_ssh.outcome == 'failure'
         run: |
           echo "⚠️ GitHub Actions деплой не выполнен"
           echo "Проверьте:"
