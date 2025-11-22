@@ -197,7 +197,7 @@ send_deploy_notification() {
 • Ветка: $CURRENT_BRANCH
 
 📝 Текст последнего коммита:
-**$LAST_COMMIT_BODY**
+<b>$LAST_COMMIT_BODY</b>
 
 🖥️ Информация о сервере:
 • Хост: $SERVER_HOSTNAME
