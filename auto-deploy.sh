@@ -159,12 +159,12 @@ send_deploy_notification() {
         RESTARTS=$(echo "$PM2_INFO" | grep -E "^│ restarts" | awk -F'│' '{print $3}' | xargs)
         
         # Получаем память и CPU из pm2 list (таблица)
+        # Формат: id │ name │ namespace │ version │ mode │ pid │ uptime │ ↺ │ status │ cpu │ memory │ user │ watching │
         PM2_LIST=$(pm2 list --no-color | grep "english-backend" | head -1)
         if [ -n "$PM2_LIST" ]; then
-            # pm2 list формат: id │ name │ namespace │ version │ mode │ pid │ uptime │ ↺ │ status │ cpu │ memory │ user │ watching │
-            # Извлекаем значения, разделенные │
-            CPU=$(echo "$PM2_LIST" | awk -F'│' '{for(i=1;i<=NF;i++) if($i ~ /^[[:space:]]*[0-9]+%/) {gsub(/^[[:space:]]*|[[:space:]]*$/,"",$i); print $i; exit}}')
-            MEMORY=$(echo "$PM2_LIST" | awk -F'│' '{for(i=1;i<=NF;i++) if($i ~ /[0-9]+\.[0-9]+(mb|kb|gb|b)/i) {gsub(/^[[:space:]]*|[[:space:]]*$/,"",$i); print $i; exit}}')
+            # Извлекаем CPU (10-я колонка) и Memory (11-я колонка) из таблицы
+            CPU=$(echo "$PM2_LIST" | awk -F'│' '{gsub(/^[[:space:]]*|[[:space:]]*$/,"",$10); print $10}')
+            MEMORY=$(echo "$PM2_LIST" | awk -F'│' '{gsub(/^[[:space:]]*|[[:space:]]*$/,"",$11); print $11}')
         fi
         
         # Формируем строку статуса с переносами строк
