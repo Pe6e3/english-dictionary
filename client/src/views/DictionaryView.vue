@@ -728,27 +728,6 @@ export default {
     padding: 12px;
   }
   
-  .mobile-cards {
-    padding: 12px;
-  }
-  
-  .mobile-card {
-    margin-bottom: 10px;
-  }
-  
-  .card-content,
-  .card-edit {
-    padding: 12px;
-  }
-  
-  .card-text {
-    font-size: 15px;
-  }
-  
-  .card-actions .action-btn {
-    padding: 10px;
-    font-size: 18px;
-  }
 }
 
 </style>
