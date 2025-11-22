@@ -74,11 +74,29 @@ update_code() {
     OLD_COMMIT=$(git log -1 --format="%h")
     log_info "Текущий коммит: $OLD_COMMIT"
     
-    # Обновляем код
-    git fetch origin || {
-        log_error "Ошибка при fetch"
-        exit 1
-    }
+    # Обновляем код с повторными попытками (на случай если изменения еще не синхронизировались)
+    MAX_RETRIES=3
+    RETRY_DELAY=3
+    RETRY_COUNT=0
+    FETCH_SUCCESS=false
+    
+    while [ $RETRY_COUNT -lt $MAX_RETRIES ] && [ "$FETCH_SUCCESS" = false ]; do
+        log_info "Попытка fetch (попытка $((RETRY_COUNT + 1))/$MAX_RETRIES)..."
+        
+        if git fetch origin; then
+            FETCH_SUCCESS=true
+            log_success "✅ Fetch выполнен успешно"
+        else
+            RETRY_COUNT=$((RETRY_COUNT + 1))
+            if [ $RETRY_COUNT -lt $MAX_RETRIES ]; then
+                log_warn "⚠️  Fetch не удался, повтор через ${RETRY_DELAY} секунд..."
+                sleep $RETRY_DELAY
+            else
+                log_error "Ошибка при fetch после $MAX_RETRIES попыток"
+                exit 1
+            fi
+        fi
+    done
     
     # Проверяем, есть ли новые коммиты
     NEW_COMMITS=$(git log HEAD..origin/"$CURRENT_BRANCH" --oneline 2>/dev/null | wc -l)
@@ -95,7 +113,7 @@ update_code() {
         # Это нужно для случаев, когда fetch не подтянул все изменения
         log_info "Выполняем pull для гарантии актуальности..."
         git pull origin "$CURRENT_BRANCH" || {
-            log_warn "Pull не выполнен, но продолжаем (возможно уже актуально)"
+            log_warn "⚠️  Pull не выполнен, но продолжаем (возможно уже актуально)"
         }
         NEW_COMMIT=$(git log -1 --format="%h")
         if [ "$OLD_COMMIT" != "$NEW_COMMIT" ]; then
