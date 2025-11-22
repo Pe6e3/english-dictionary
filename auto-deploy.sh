@@ -181,7 +181,12 @@ $LAST_COMMIT_BODY
 
     # Используем Python для правильного формирования JSON
     if command -v python3 &> /dev/null; then
-        JSON_DATA=$(printf '%s' "$MESSAGE" | python3 -c "import json, sys; print(json.dumps({'massage': sys.stdin.read()}, ensure_ascii=False))" 2>/dev/null)
+        JSON_DATA=$(python3 <<PYEOF
+import json
+message = """$MESSAGE"""
+print(json.dumps({"massage": message}, ensure_ascii=False))
+PYEOF
+)
     else
         # Fallback: простое экранирование
         MESSAGE_ESCAPED=$(printf '%s' "$MESSAGE" | sed 's/\\/\\\\/g' | sed 's/"/\\"/g' | awk '{gsub(/\n/, "\\n"); print}')
