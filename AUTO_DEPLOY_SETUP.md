@@ -32,62 +32,27 @@
 
 ### Необходимые секреты:
 
-#### 1. SSH_HOST
-- **Значение**: IP адрес или домен вашего сервера
-- **Пример**: `195.7.6.68` или `vmi2656319.contaboserver.net`
-
-#### 2. SSH_USER
-- **Значение**: имя пользователя для SSH подключения
-- **Пример**: `root`
-
-#### 3. SSH_KEY
-- **Значение**: приватный SSH ключ для подключения к серверу
-- **Как получить**:
-  ```bash
-  # На сервере выполните:
-  cat ~/.ssh/id_ed25519
-  # или если используется RSA:
-  cat ~/.ssh/id_rsa
-  ```
-- **Важно**: Скопируйте весь вывод, включая строки:
-  - `-----BEGIN OPENSSH PRIVATE KEY-----` (или `-----BEGIN RSA PRIVATE KEY-----`)
-  - Содержимое ключа
-  - `-----END OPENSSH PRIVATE KEY-----` (или `-----END RSA PRIVATE KEY-----`)
-
-#### 4. SSH_PORT (опционально)
-- **Значение**: порт SSH (по умолчанию 22)
-- **Пример**: `22`
-
-#### 5. DEPLOY_WEBHOOK_URL (опционально, для fallback)
+#### 1. DEPLOY_WEBHOOK_URL (обязательно)
 - **Значение**: URL webhook endpoint для деплоя
 - **Пример**: `https://vmi2656319.contaboserver.net/english-api/api/deploy`
 - **Формат**: `https://ваш-домен/english-api/api/deploy`
+- **Как узнать**: URL формируется как `https://ваш-домен/english-api/api/deploy`
 
-#### 6. DEPLOY_SECRET (опционально, для webhook)
+#### 2. DEPLOY_SECRET (обязательно)
 - **Значение**: секретный ключ для webhook endpoint
-- **Как настроить**:
+- **Текущий ключ**: `8f205f34959c04b6ad880caea68d3ee516168b65b13bc34710734efcd0c7c879`
+- **Как изменить**:
   ```bash
-  # На сервере установите переменную окружения:
-  # В файле /var/www/english/server/ecosystem.config.js добавьте:
-  # env: {
-  #   DEPLOY_SECRET: 'ваш-секретный-ключ-здесь'
-  # }
+  # На сервере сгенерируйте новый ключ:
+  openssl rand -hex 32
+  
+  # Установите переменную окружения:
+  export DEPLOY_SECRET="новый-ключ-здесь"
+  
+  # Перезапустите PM2:
+  pm2 restart english-backend --update-env
   ```
 - **Важно**: Используйте сложный случайный ключ для безопасности
-
-### Проверка SSH ключа
-
-Убедитесь, что публичный ключ добавлен в `~/.ssh/authorized_keys` на сервере:
-```bash
-# На сервере проверьте:
-cat ~/.ssh/authorized_keys | grep "$(cat ~/.ssh/id_ed25519.pub | cut -d' ' -f2)"
-```
-
-Если ключа нет, добавьте его:
-```bash
-cat ~/.ssh/id_ed25519.pub >> ~/.ssh/authorized_keys
-chmod 600 ~/.ssh/authorized_keys
-```
 
 ## Использование
 
