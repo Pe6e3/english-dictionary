@@ -168,8 +168,9 @@ deploy_client() {
         
         # Проверяем, что vite установлен
         if [ ! -f "node_modules/.bin/vite" ] && [ ! -f "node_modules/vite/bin/vite.js" ]; then
-            log_warn "⚠️  vite не найден, принудительно переустанавливаем зависимости..."
-            npm install vite --legacy-peer-deps --save-dev 2>&1 | tail -10 || true
+            log_warn "⚠️  vite не найден, переустанавливаем все зависимости..."
+            rm -rf node_modules package-lock.json
+            npm install --legacy-peer-deps 2>&1 | tail -15 || true
         fi
         
         # Убеждаемся, что PATH содержит node_modules/.bin
