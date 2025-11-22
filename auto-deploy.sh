@@ -70,14 +70,30 @@ update_code() {
     # Сохраняем текущую ветку
     CURRENT_BRANCH=$(git branch --show-current)
     
+    # Получаем информацию о текущем состоянии
+    OLD_COMMIT=$(git log -1 --format="%h")
+    log_info "Текущий коммит: $OLD_COMMIT"
+    
     # Обновляем код
-    git fetch origin
-    git pull origin "$CURRENT_BRANCH" || {
-        log_error "Ошибка при обновлении кода"
+    git fetch origin || {
+        log_error "Ошибка при fetch"
         exit 1
     }
     
-    log_success "✅ Код обновлен"
+    # Проверяем, есть ли новые коммиты
+    NEW_COMMITS=$(git log HEAD..origin/"$CURRENT_BRANCH" --oneline | wc -l)
+    if [ "$NEW_COMMITS" -gt 0 ]; then
+        log_info "Найдено новых коммитов: $NEW_COMMITS"
+        git pull origin "$CURRENT_BRANCH" || {
+            log_error "Ошибка при pull"
+            exit 1
+        }
+        NEW_COMMIT=$(git log -1 --format="%h")
+        log_success "✅ Код обновлен: $OLD_COMMIT → $NEW_COMMIT"
+    else
+        log_info "Новых коммитов нет, код уже актуален"
+        log_success "✅ Код актуален (коммит: $OLD_COMMIT)"
+    fi
 }
 
 # Деплой сервера
