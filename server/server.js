@@ -261,25 +261,28 @@ app.post('/api/deploy', (req, res) => {
     return res.status(401).json({ error: 'Неверный секретный ключ' });
   }
   
-  // Запускаем деплой в фоновом режиме
+  // Отправляем ответ сразу, не дожидаясь завершения деплоя
+  res.json({ 
+    success: true, 
+    message: 'Деплой запущен',
+    timestamp: new Date().toISOString()
+  });
+  
+  // Запускаем деплой в фоновом режиме (после отправки ответа)
   const { exec } = require('child_process');
   const deployScript = '/var/www/english/auto-deploy.sh';
   
   exec(`bash ${deployScript}`, (error, stdout, stderr) => {
     if (error) {
       console.error('Ошибка деплоя:', error);
-      return res.status(500).json({ 
-        success: false, 
-        error: 'Ошибка при выполнении деплоя',
-        message: error.message 
-      });
+      console.error('Stderr:', stderr);
+      return;
     }
     
-    res.json({ 
-      success: true, 
-      message: 'Деплой запущен',
-      output: stdout 
-    });
+    console.log('Деплой завершен успешно');
+    if (stdout) {
+      console.log('Вывод:', stdout);
+    }
   });
 });
 
