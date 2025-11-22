@@ -278,14 +278,15 @@ app.post('/api/deploy', (req, res) => {
   
   // Добавляем задержку перед запуском деплоя, чтобы дать время GitHub синхронизировать изменения
   // Запускаем через nohup в фоне с задержкой, перенаправляя вывод в лог
-  const command = `(sleep 5 && bash ${deployScript}) >> ${logFile} 2>&1 &`;
+  const DELAY_SECONDS = 10; // Увеличена задержка до 10 секунд для надежности
+  const command = `(sleep ${DELAY_SECONDS} && bash ${deployScript}) >> ${logFile} 2>&1 &`;
   
   exec(command, (error) => {
     if (error) {
       console.error(`[${new Date().toISOString()}] Ошибка запуска деплоя:`, error);
       return;
     }
-    console.log(`[${new Date().toISOString()}] Деплой запланирован (запуск через 5 секунд). Логи: ${logFile}`);
+    console.log(`[${new Date().toISOString()}] Деплой запланирован (запуск через ${DELAY_SECONDS} секунд). Логи: ${logFile}`);
   });
 });
 

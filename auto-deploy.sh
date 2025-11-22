@@ -75,8 +75,8 @@ update_code() {
     log_info "Текущий коммит: $OLD_COMMIT"
     
     # Обновляем код с повторными попытками (на случай если изменения еще не синхронизировались)
-    MAX_RETRIES=3
-    RETRY_DELAY=3
+    MAX_RETRIES=5
+    RETRY_DELAY=5
     RETRY_COUNT=0
     FETCH_SUCCESS=false
     
