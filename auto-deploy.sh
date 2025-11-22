@@ -81,7 +81,7 @@ update_code() {
     }
     
     # Проверяем, есть ли новые коммиты
-    NEW_COMMITS=$(git log HEAD..origin/"$CURRENT_BRANCH" --oneline | wc -l)
+    NEW_COMMITS=$(git log HEAD..origin/"$CURRENT_BRANCH" --oneline 2>/dev/null | wc -l)
     if [ "$NEW_COMMITS" -gt 0 ]; then
         log_info "Найдено новых коммитов: $NEW_COMMITS"
         git pull origin "$CURRENT_BRANCH" || {
@@ -91,8 +91,18 @@ update_code() {
         NEW_COMMIT=$(git log -1 --format="%h")
         log_success "✅ Код обновлен: $OLD_COMMIT → $NEW_COMMIT"
     else
-        log_info "Новых коммитов нет, код уже актуален"
-        log_success "✅ Код актуален (коммит: $OLD_COMMIT)"
+        # Всегда делаем pull, даже если кажется что нет новых коммитов
+        # Это нужно для случаев, когда fetch не подтянул все изменения
+        log_info "Выполняем pull для гарантии актуальности..."
+        git pull origin "$CURRENT_BRANCH" || {
+            log_warn "Pull не выполнен, но продолжаем (возможно уже актуально)"
+        }
+        NEW_COMMIT=$(git log -1 --format="%h")
+        if [ "$OLD_COMMIT" != "$NEW_COMMIT" ]; then
+            log_success "✅ Код обновлен: $OLD_COMMIT → $NEW_COMMIT"
+        else
+            log_success "✅ Код актуален (коммит: $OLD_COMMIT)"
+        fi
     fi
 }
 
