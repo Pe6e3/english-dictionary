@@ -191,14 +191,13 @@ send_deploy_notification() {
     MESSAGE="Деплой English произведён успешно!
 
 📦 Информация о версии:
-• Коммит: $LAST_COMMIT_SHORT ($LAST_COMMIT)
-• Сообщение: $LAST_COMMIT_MSG
+• Коммит: $LAST_COMMIT_SHORT
 • Автор: $LAST_COMMIT_AUTHOR
 • Дата коммита: $LAST_COMMIT_DATE
 • Ветка: $CURRENT_BRANCH
 
 📝 Текст последнего коммита:
-$LAST_COMMIT_BODY
+**$LAST_COMMIT_BODY**
 
 🖥️ Информация о сервере:
 • Хост: $SERVER_HOSTNAME
