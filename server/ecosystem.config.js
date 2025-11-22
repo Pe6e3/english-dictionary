@@ -9,7 +9,8 @@ module.exports = {
     max_memory_restart: '1G',
     env: {
       NODE_ENV: 'production',
-      PORT: 4003
+      PORT: 4003,
+      DEPLOY_SECRET: process.env.DEPLOY_SECRET || 'change-me-to-secure-random-key'
     },
     error_file: '/var/log/pm2/english-backend-error.log',
     out_file: '/var/log/pm2/english-backend-out.log',
