@@ -182,9 +182,24 @@ deploy_client() {
         # Сборка проекта
         if grep -q "\"build\"" package.json; then
             log_info "Сборка клиента..."
-            # Используем npm run build с явным указанием PATH для node_modules/.bin
+            # Убеждаемся, что PATH содержит node_modules/.bin
             export PATH="$PWD/node_modules/.bin:$PATH"
-            BUILD_OUTPUT=$(npm run build 2>&1)
+            
+            # Проверяем наличие vite перед сборкой
+            if [ ! -f "node_modules/.bin/vite" ] && [ ! -f "node_modules/vite/bin/vite.js" ]; then
+                log_error "❌ vite не найден после установки зависимостей"
+                exit 1
+            fi
+            
+            # Выполняем сборку с явным указанием пути к vite
+            if [ -f "node_modules/.bin/vite" ]; then
+                BUILD_OUTPUT=$(./node_modules/.bin/vite build 2>&1)
+            elif [ -f "node_modules/vite/bin/vite.js" ]; then
+                BUILD_OUTPUT=$(node node_modules/vite/bin/vite.js build 2>&1)
+            else
+                BUILD_OUTPUT=$(npm run build 2>&1)
+            fi
+            
             BUILD_EXIT_CODE=$?
             
             if [ $BUILD_EXIT_CODE -eq 0 ]; then
@@ -192,7 +207,7 @@ deploy_client() {
                 # Показываем краткую информацию о сборке
                 echo "$BUILD_OUTPUT" | grep -E "(built|dist|assets|✓|transformed)" | head -5 || true
             else
-                log_error "❌ Ошибка сборки клиента"
+                log_error "❌ Ошибка сборки клиента (код: $BUILD_EXIT_CODE)"
                 echo "$BUILD_OUTPUT" | tail -30
                 exit 1
             fi
