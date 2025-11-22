@@ -269,44 +269,52 @@ app.post('/api/deploy', (req, res) => {
   });
   
   // Запускаем деплой в фоновом режиме (после отправки ответа)
-  const { exec } = require('child_process');
+  const { spawn } = require('child_process');
   const deployScript = '/var/www/english/auto-deploy.sh';
-  const path = require('path');
   
   console.log(`[${new Date().toISOString()}] Запуск деплоя через webhook...`);
   
-  // Запускаем скрипт с правильной рабочей директорией и переменными окружения
-  exec(`bash ${deployScript}`, {
+  // Используем spawn вместо exec для лучшей обработки потоков
+  const deployProcess = spawn('bash', [deployScript], {
     cwd: '/var/www/english',
-    env: { ...process.env, PATH: process.env.PATH },
-    maxBuffer: 10 * 1024 * 1024 // 10MB
-  }, (error, stdout, stderr) => {
-    const timestamp = new Date().toISOString();
-    
-    if (error) {
-      console.error(`[${timestamp}] Ошибка деплоя:`, error);
-      if (stderr) {
-        console.error(`[${timestamp}] Stderr:`, stderr);
+    env: process.env,
+    stdio: ['ignore', 'pipe', 'pipe'],
+    detached: true
+  });
+  
+  // Отсоединяем процесс, чтобы он работал в фоне
+  deployProcess.unref();
+  
+  // Логируем вывод в реальном времени
+  deployProcess.stdout.on('data', (data) => {
+    const lines = data.toString().split('\n');
+    lines.forEach(line => {
+      if (line.trim()) {
+        console.log(`[DEPLOY] ${line}`);
       }
-      return;
+    });
+  });
+  
+  deployProcess.stderr.on('data', (data) => {
+    const lines = data.toString().split('\n');
+    lines.forEach(line => {
+      if (line.trim()) {
+        console.error(`[DEPLOY ERROR] ${line}`);
+      }
+    });
+  });
+  
+  deployProcess.on('close', (code) => {
+    const timestamp = new Date().toISOString();
+    if (code === 0) {
+      console.log(`[${timestamp}] Деплой завершен успешно (код: ${code})`);
+    } else {
+      console.error(`[${timestamp}] Деплой завершен с ошибкой (код: ${code})`);
     }
-    
-    console.log(`[${timestamp}] Деплой завершен успешно`);
-    if (stdout) {
-      // Логируем вывод построчно для лучшей читаемости
-      stdout.split('\n').forEach(line => {
-        if (line.trim()) {
-          console.log(`[${timestamp}] ${line}`);
-        }
-      });
-    }
-    if (stderr) {
-      stderr.split('\n').forEach(line => {
-        if (line.trim()) {
-          console.error(`[${timestamp}] ${line}`);
-        }
-      });
-    }
+  });
+  
+  deployProcess.on('error', (error) => {
+    console.error(`[${new Date().toISOString()}] Ошибка запуска деплоя:`, error);
   });
 });
 
