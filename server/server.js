@@ -440,7 +440,8 @@ app.post('/api/add-translation', (req, res) => {
 
     const englishTextTrimmed = englishText.trim();
     const russianTranslationTrimmed = russianTranslation.trim();
-    const englishTextLower = englishTextTrimmed.toLowerCase();
+    // Нормализуем регистр - всегда сохраняем в lowercase для избежания проблем с UNIQUE constraint
+    const englishTextNormalized = englishTextTrimmed.toLowerCase();
 
     // Сначала проверяем, существует ли уже такой перевод (без учета регистра)
     db.get(`
@@ -457,7 +458,7 @@ app.post('/api/add-translation', (req, res) => {
         WHERE LOWER(english_phrase) = ? AND user_id = ?
       )
       LIMIT 1
-    `, [englishTextLower, user.id, englishTextLower, user.id], (err, existingRow) => {
+    `, [englishTextNormalized, user.id, englishTextNormalized, user.id], (err, existingRow) => {
       if (err) {
         console.error('Ошибка при проверке существования перевода:', err);
         return res.status(500).json({ error: 'Ошибка при проверке перевода' });
@@ -473,71 +474,51 @@ app.post('/api/add-translation', (req, res) => {
         });
       }
 
-      // Проверяем также точное совпадение (с учетом регистра) для текущего пользователя
-      // Это нужно, потому что UNIQUE constraint чувствителен к регистру
-      db.get(`
-        SELECT english_word
-        FROM words
-        WHERE english_word = ? AND user_id = ?
-        LIMIT 1
-      `, [englishTextTrimmed, user.id], (err2, exactMatch) => {
-        if (err2) {
-          console.error('Ошибка при проверке точного совпадения:', err2);
-          return res.status(500).json({ error: 'Ошибка при проверке перевода' });
-        }
-
-        if (exactMatch) {
-          return res.status(409).json({ 
-            error: 'Такой перевод уже существует (точное совпадение)'
-          });
-        }
-
-        // Если перевода нет, добавляем в words (сохраняем оригинальный регистр)
-        db.run(
-          'INSERT INTO words (english_word, russian_translation, user_id) VALUES (?, ?, ?)',
-          [englishTextTrimmed, russianTranslationTrimmed, user.id],
-          function(insertErr) {
-            if (insertErr) {
-              console.error('Ошибка при добавлении перевода:', insertErr);
-              
-              // Если ошибка UNIQUE constraint, проверяем еще раз
-              if (insertErr.code === 'SQLITE_CONSTRAINT' && insertErr.message.includes('UNIQUE')) {
-                // Проверяем, может быть слово уже есть с другим регистром
-                db.get(`
-                  SELECT english_word, russian_translation
-                  FROM words
-                  WHERE LOWER(english_word) = ? AND user_id = ?
-                  LIMIT 1
-                `, [englishTextLower, user.id], (err3, existing) => {
-                  if (err3) {
-                    return res.status(500).json({ error: 'Ошибка при добавлении перевода: ' + insertErr.message });
-                  }
-                  
-                  if (existing) {
-                    return res.status(409).json({ 
-                      error: 'Такой перевод уже существует',
-                      existing: {
-                        text: existing.english_word,
-                        translation: existing.russian_translation
-                      }
-                    });
-                  }
-                  
+      // Если перевода нет, добавляем в words (сохраняем нормализованный регистр - lowercase)
+      db.run(
+        'INSERT INTO words (english_word, russian_translation, user_id) VALUES (?, ?, ?)',
+        [englishTextNormalized, russianTranslationTrimmed, user.id],
+        function(insertErr) {
+          if (insertErr) {
+            console.error('Ошибка при добавлении перевода:', insertErr);
+            
+            // Если ошибка UNIQUE constraint, проверяем еще раз
+            if (insertErr.code === 'SQLITE_CONSTRAINT' && insertErr.message.includes('UNIQUE')) {
+              // Проверяем, может быть слово уже есть
+              db.get(`
+                SELECT english_word, russian_translation
+                FROM words
+                WHERE LOWER(english_word) = ? AND user_id = ?
+                LIMIT 1
+              `, [englishTextNormalized, user.id], (err3, existing) => {
+                if (err3) {
                   return res.status(500).json({ error: 'Ошибка при добавлении перевода: ' + insertErr.message });
-                });
-              } else {
+                }
+                
+                if (existing) {
+                  return res.status(409).json({ 
+                    error: 'Такой перевод уже существует',
+                    existing: {
+                      text: existing.english_word,
+                      translation: existing.russian_translation
+                    }
+                  });
+                }
+                
                 return res.status(500).json({ error: 'Ошибка при добавлении перевода: ' + insertErr.message });
-              }
-            } else {
-              res.json({ 
-                success: true, 
-                id: this.lastID,
-                message: 'Перевод успешно добавлен' 
               });
+            } else {
+              return res.status(500).json({ error: 'Ошибка при добавлении перевода: ' + insertErr.message });
             }
+          } else {
+            res.json({ 
+              success: true, 
+              id: this.lastID,
+              message: 'Перевод успешно добавлен' 
+            });
           }
-        );
-      });
+        }
+      );
     });
   });
 });
@@ -600,10 +581,14 @@ app.put('/api/update-translation/:id', (req, res) => {
       return res.status(401).json({ error: 'Пользователь не найден' });
     }
 
+    // Нормализуем регистр - всегда сохраняем в lowercase
+    const englishTextNormalized = englishText.trim().toLowerCase();
+    const russianTranslationTrimmed = russianTranslation.trim();
+
     // Пробуем обновить в words
     db.run(
       'UPDATE words SET english_word = ?, russian_translation = ? WHERE id = ? AND user_id = ?',
-      [englishText.trim(), russianTranslation.trim(), id, user.id],
+      [englishTextNormalized, russianTranslationTrimmed, id, user.id],
       function(err) {
         if (err) {
           return res.status(500).json({ error: 'Ошибка при обновлении перевода' });
@@ -619,7 +604,7 @@ app.put('/api/update-translation/:id', (req, res) => {
         // Если не обновилось в words, пробуем в phrases
         db.run(
           'UPDATE phrases SET english_phrase = ?, russian_translation = ? WHERE id = ? AND user_id = ?',
-          [englishText.trim(), russianTranslation.trim(), id, user.id],
+          [englishTextNormalized, russianTranslationTrimmed, id, user.id],
           function(err2) {
             if (err2) {
               return res.status(500).json({ error: 'Ошибка при обновлении перевода' });
