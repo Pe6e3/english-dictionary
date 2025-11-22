@@ -338,7 +338,148 @@ app.delete('/api/delete-phrase/:id', (req, res) => {
   });
 });
 
-// API для получения всех слов
+// API для получения всех переводов (объединяет слова и фразы)
+app.get('/api/translations', (req, res) => {
+  const username = req.query.username;
+  
+  if (!username) {
+    return res.status(400).json({ error: 'Необходимо указать username' });
+  }
+  
+  getUserById(username, (err, user) => {
+    if (err || !user) {
+      return res.status(401).json({ error: 'Пользователь не найден' });
+    }
+    
+    // Объединяем слова и фразы в один массив
+    db.all(`
+      SELECT 
+        id,
+        COALESCE(english_word, english_phrase) as english_text,
+        russian_translation,
+        created_at,
+        CASE WHEN english_word IS NOT NULL THEN 'word' ELSE 'phrase' END as type
+      FROM (
+        SELECT id, english_word, NULL as english_phrase, russian_translation, created_at
+        FROM words
+        WHERE user_id = ?
+        UNION ALL
+        SELECT id, NULL as english_word, english_phrase, russian_translation, created_at
+        FROM phrases
+        WHERE user_id = ?
+      )
+      ORDER BY created_at DESC
+    `, [user.id, user.id], (err, rows) => {
+      if (err) {
+        return res.status(500).json({ error: 'Ошибка при получении переводов' });
+      }
+      res.json(rows);
+    });
+  });
+});
+
+// API для проверки существования перевода
+app.get('/api/check-translation/:text', (req, res) => {
+  const text = req.params.text.toLowerCase().trim();
+  const username = req.query.username;
+  
+  if (!username) {
+    return res.status(400).json({ error: 'Необходимо указать username' });
+  }
+  
+  getUserById(username, (err, user) => {
+    if (err || !user) {
+      return res.status(401).json({ error: 'Пользователь не найден' });
+    }
+    
+    // Проверяем в обеих таблицах
+    db.get(`
+      SELECT 
+        COALESCE(english_word, english_phrase) as text,
+        russian_translation as translation
+      FROM (
+        SELECT english_word, NULL as english_phrase, russian_translation
+        FROM words
+        WHERE LOWER(english_word) = ? AND user_id = ?
+        UNION ALL
+        SELECT NULL as english_word, english_phrase, russian_translation
+        FROM phrases
+        WHERE LOWER(english_phrase) = ? AND user_id = ?
+      )
+      LIMIT 1
+    `, [text, user.id, text, user.id], (err, row) => {
+      if (err) {
+        return res.status(500).json({ error: 'Ошибка базы данных' });
+      }
+      
+      if (row) {
+        res.json({ 
+          exists: true, 
+          text: row.text, 
+          translation: row.translation 
+        });
+      } else {
+        res.json({ exists: false });
+      }
+    });
+  });
+});
+
+// API для добавления нового перевода
+app.post('/api/add-translation', (req, res) => {
+  const { englishText, russianTranslation, username } = req.body;
+  
+  if (!englishText || !russianTranslation || !username) {
+    return res.status(400).json({ error: 'Необходимо указать текст, перевод и username' });
+  }
+
+  getUserById(username, (err, user) => {
+    if (err || !user) {
+      return res.status(401).json({ error: 'Пользователь не найден' });
+    }
+
+    // Пробуем добавить как слово (если короткое) или как фразу
+    // Для простоты всегда добавляем в words, но можно сделать логику определения
+    db.run(
+      'INSERT INTO words (english_word, russian_translation, user_id) VALUES (?, ?, ?)',
+      [englishText.trim(), russianTranslation.trim(), user.id],
+      function(err) {
+        if (err) {
+          if (err.code === 'SQLITE_CONSTRAINT_UNIQUE') {
+            // Если слово уже есть, пробуем добавить как фразу
+            db.run(
+              'INSERT INTO phrases (english_phrase, russian_translation, user_id) VALUES (?, ?, ?)',
+              [englishText.trim(), russianTranslation.trim(), user.id],
+              function(err2) {
+                if (err2) {
+                  if (err2.code === 'SQLITE_CONSTRAINT_UNIQUE') {
+                    return res.status(409).json({ error: 'Такой перевод уже существует' });
+                  }
+                  return res.status(500).json({ error: 'Ошибка при добавлении перевода' });
+                }
+                res.json({ 
+                  success: true, 
+                  id: this.lastID,
+                  message: 'Перевод успешно добавлен' 
+                });
+              }
+            );
+          } else {
+            return res.status(500).json({ error: 'Ошибка при добавлении перевода' });
+          }
+        } else {
+          res.json({ 
+            success: true, 
+            id: this.lastID,
+            message: 'Перевод успешно добавлен' 
+          });
+        }
+      }
+    );
+  });
+});
+
+// API для получения всех слов (для обратной совместимости)
 app.get('/api/words', (req, res) => {
   const username = req.query.username;
   
@@ -360,7 +501,7 @@ app.get('/api/words', (req, res) => {
   });
 });
 
-// API для получения всех фраз
+// API для получения всех фраз (для обратной совместимости)
 app.get('/api/phrases', (req, res) => {
   const username = req.query.username;
   
@@ -378,6 +519,106 @@ app.get('/api/phrases', (req, res) => {
         return res.status(500).json({ error: 'Ошибка при получении фраз' });
       }
       res.json(rows);
+    });
+  });
+});
+
+// API для обновления перевода (работает с обеими таблицами)
+app.put('/api/update-translation/:id', (req, res) => {
+  const { id } = req.params;
+  const { englishText, russianTranslation, username } = req.body;
+  
+  if (!englishText || !russianTranslation || !username) {
+    return res.status(400).json({ error: 'Необходимо указать текст, перевод и username' });
+  }
+
+  getUserById(username, (err, user) => {
+    if (err || !user) {
+      return res.status(401).json({ error: 'Пользователь не найден' });
+    }
+
+    // Пробуем обновить в words
+    db.run(
+      'UPDATE words SET english_word = ?, russian_translation = ? WHERE id = ? AND user_id = ?',
+      [englishText.trim(), russianTranslation.trim(), id, user.id],
+      function(err) {
+        if (err) {
+          return res.status(500).json({ error: 'Ошибка при обновлении перевода' });
+        }
+        
+        if (this.changes > 0) {
+          return res.json({ 
+            success: true, 
+            message: 'Перевод успешно обновлен' 
+          });
+        }
+        
+        // Если не обновилось в words, пробуем в phrases
+        db.run(
+          'UPDATE phrases SET english_phrase = ?, russian_translation = ? WHERE id = ? AND user_id = ?',
+          [englishText.trim(), russianTranslation.trim(), id, user.id],
+          function(err2) {
+            if (err2) {
+              return res.status(500).json({ error: 'Ошибка при обновлении перевода' });
+            }
+            
+            if (this.changes === 0) {
+              return res.status(404).json({ error: 'Перевод не найден' });
+            }
+            
+            res.json({ 
+              success: true, 
+              message: 'Перевод успешно обновлен' 
+            });
+          }
+        );
+      }
+    );
+  });
+});
+
+// API для удаления перевода (работает с обеими таблицами)
+app.delete('/api/delete-translation/:id', (req, res) => {
+  const { id } = req.params;
+  const username = req.query.username;
+  
+  if (!username) {
+    return res.status(400).json({ error: 'Необходимо указать username' });
+  }
+  
+  getUserById(username, (err, user) => {
+    if (err || !user) {
+      return res.status(401).json({ error: 'Пользователь не найден' });
+    }
+    
+    // Пробуем удалить из words
+    db.run('DELETE FROM words WHERE id = ? AND user_id = ?', [id, user.id], function(err) {
+      if (err) {
+        return res.status(500).json({ error: 'Ошибка при удалении перевода' });
+      }
+      
+      if (this.changes > 0) {
+        return res.json({ 
+          success: true, 
+          message: 'Перевод успешно удален' 
+        });
+      }
+      
+      // Если не удалилось из words, пробуем из phrases
+      db.run('DELETE FROM phrases WHERE id = ? AND user_id = ?', [id, user.id], function(err2) {
+        if (err2) {
+          return res.status(500).json({ error: 'Ошибка при удалении перевода' });
+        }
+        
+        if (this.changes === 0) {
+          return res.status(404).json({ error: 'Перевод не найден' });
+        }
+        
+        res.json({ 
+          success: true, 
+          message: 'Перевод успешно удален' 
+        });
+      });
     });
   });
 });

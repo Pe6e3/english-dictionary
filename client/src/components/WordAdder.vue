@@ -1,42 +1,17 @@
 <template>
   <div class="word-adder">
     <div class="container">
-      <h1 class="title">Изучение английских слов</h1>
-      
-      <!-- Кнопка перехода к словарю -->
-      <div class="dictionary-link">
-        <RouterLink to="/dictionary" class="dictionary-btn">
-          📚 Просмотреть словарь
-        </RouterLink>
-      </div>
-
-      <!-- Переключатель между словами и фразами -->
-      <div class="toggle-container">
-        <button 
-          :class="['toggle-btn', { active: mode === 'word' }]"
-          @click="mode = 'word'"
-        >
-          Слова
-        </button>
-        <button 
-          :class="['toggle-btn', { active: mode === 'phrase' }]"
-          @click="mode = 'phrase'"
-        >
-          Фразы
-        </button>
-      </div>
-
       <!-- Форма добавления -->
       <div class="form-container">
         <div class="input-group">
-          <label :for="mode === 'word' ? 'englishWord' : 'englishPhrase'">
-            {{ mode === 'word' ? 'Английское слово' : 'Английская фраза' }}
+          <label for="englishText">
+            Английский текст
           </label>
           <input
-            :id="mode === 'word' ? 'englishWord' : 'englishPhrase'"
+            id="englishText"
             v-model="englishInput"
             type="text"
-            :placeholder="mode === 'word' ? 'Введите слово...' : 'Введите фразу...'"
+            placeholder="Введите слово или фразу..."
             @input="checkExisting"
             @keyup.enter="handleSubmit"
           />
@@ -45,9 +20,9 @@
         <!-- Показ существующего перевода -->
         <div v-if="existingTranslation" class="existing-translation">
           <div class="translation-card">
-            <h3>Это слово уже есть в базе:</h3>
+            <h3>Этот перевод уже есть в базе:</h3>
             <div class="translation-content">
-              <span class="english">{{ existingTranslation.word || existingTranslation.phrase }}</span>
+              <span class="english">{{ existingTranslation.text }}</span>
               <span class="arrow">→</span>
               <span class="russian">{{ existingTranslation.translation }}</span>
             </div>
@@ -57,15 +32,15 @@
         <!-- Форма для нового перевода -->
         <div v-if="!existingTranslation && englishInput.trim()" class="translation-form">
           <div class="input-group">
-            <label :for="mode === 'word' ? 'russianWord' : 'russianPhrase'">
-              {{ mode === 'word' ? 'Перевод слова' : 'Перевод фразы' }}
+            <label for="russianTranslation">
+              Русский перевод
             </label>
             <div class="translation-input-container">
               <input
-                :id="mode === 'word' ? 'russianWord' : 'russianPhrase'"
+                id="russianTranslation"
                 v-model="russianInput"
                 type="text"
-                :placeholder="mode === 'word' ? 'Введите перевод...' : 'Введите перевод...'"
+                placeholder="Введите перевод..."
                 @keyup.enter="handleSubmit"
               />
               <button 
@@ -135,9 +110,9 @@
         </div>
       </div>
 
-      <!-- Список добавленных слов/фраз -->
+      <!-- Список добавленных переводов -->
       <div class="words-list">
-        <h2>{{ mode === 'word' ? 'Добавленные слова' : 'Добавленные фразы' }}</h2>
+        <h2>Добавленные переводы</h2>
         <div v-if="items.length === 0" class="empty-state">
           Пока ничего не добавлено
         </div>
@@ -148,7 +123,7 @@
             class="item-card"
           >
             <div class="item-content">
-              <span class="english">{{ mode === 'word' ? item.english_word : item.english_phrase }}</span>
+              <span class="english">{{ item.english_text }}</span>
               <span class="arrow">→</span>
               <span class="russian">{{ item.russian_translation }}</span>
             </div>
@@ -173,7 +148,6 @@ export default {
   },
   data() {
     return {
-      mode: 'word', // 'word' или 'phrase'
       englishInput: '',
       russianInput: '',
       existingTranslation: null,
@@ -233,8 +207,7 @@ export default {
         }
 
         try {
-          const endpoint = this.mode === 'word' ? 'check-word' : 'check-phrase'
-          const url = `${this.apiBaseUrl}/${endpoint}/${encodeURIComponent(input)}?username=${encodeURIComponent(this.currentUsername)}`
+          const url = `${this.apiBaseUrl}/check-translation/${encodeURIComponent(input)}?username=${encodeURIComponent(this.currentUsername)}`
           console.log('Checking URL:', url)
           
           const response = await fetch(url)
@@ -245,7 +218,7 @@ export default {
           const data = await response.json()
 
           if (data.exists) {
-            this.existingTranslation = data
+            this.existingTranslation = { text: data.text, translation: data.translation }
             this.message = ''
           } else {
             this.existingTranslation = null
@@ -266,12 +239,13 @@ export default {
       }
 
       try {
-        const endpoint = this.mode === 'word' ? 'add-word' : 'add-phrase'
-        const body = this.mode === 'word' 
-          ? { englishWord: this.englishInput.trim(), russianTranslation: this.russianInput.trim(), username: this.currentUsername }
-          : { englishPhrase: this.englishInput.trim(), russianTranslation: this.russianInput.trim(), username: this.currentUsername }
+        const body = { 
+          englishText: this.englishInput.trim(), 
+          russianTranslation: this.russianInput.trim(), 
+          username: this.currentUsername 
+        }
 
-        const url = `${this.apiBaseUrl}/${endpoint}`
+        const url = `${this.apiBaseUrl}/add-translation`
         console.log('Submitting to URL:', url)
         console.log('Body:', body)
 
@@ -312,8 +286,7 @@ export default {
 
     async loadItems() {
       try {
-        const endpoint = this.mode === 'word' ? 'words' : 'phrases'
-        const url = `${this.apiBaseUrl}/${endpoint}?username=${encodeURIComponent(this.currentUsername)}`
+        const url = `${this.apiBaseUrl}/translations?username=${encodeURIComponent(this.currentUsername)}`
         console.log('Loading from URL:', url)
         
         const response = await fetch(url)
@@ -479,28 +452,10 @@ export default {
 
     // Метод для фокуса на поле ввода английского языка
     focusEnglishInput() {
-      const englishInputElement = this.$el.querySelector(`#${this.mode === 'word' ? 'englishWord' : 'englishPhrase'}`)
+      const englishInputElement = this.$el.querySelector('#englishText')
       if (englishInputElement) {
         englishInputElement.focus()
       }
-    }
-  },
-  watch: {
-    mode() {
-      this.englishInput = ''
-      this.russianInput = ''
-      this.existingTranslation = null
-      this.message = ''
-      this.autoTranslationDone = false
-      this.autoTranslationResult = null
-      this.translationOptions = []
-      this.selectedTranslationIndex = 0
-      this.loadItems()
-      
-      // Фокус на поле ввода английского языка при смене режима
-      this.$nextTick(() => {
-        this.focusEnglishInput()
-      })
     }
   }
 }
@@ -521,77 +476,6 @@ export default {
   border-radius: 20px;
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
   overflow: hidden;
-}
-
-.title {
-  text-align: center;
-  color: #2d3748;
-  font-size: 2.5rem;
-  font-weight: 700;
-  margin: 0;
-  padding: 40px 20px 20px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-}
-
-.dictionary-link {
-  text-align: center;
-  margin-bottom: 20px;
-}
-
-.dictionary-btn {
-  display: inline-block;
-  background: #4299e1;
-  color: white;
-  padding: 12px 25px;
-  border-radius: 12px;
-  font-size: 16px;
-  font-weight: 600;
-  text-decoration: none;
-  transition: all 0.3s ease;
-  border: none;
-  cursor: pointer;
-  box-shadow: 0 4px 15px rgba(66, 153, 225, 0.3);
-}
-
-.dictionary-btn:hover {
-  background: #3182ce;
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(66, 153, 225, 0.4);
-}
-
-.toggle-container {
-  display: flex;
-  background: #f7fafc;
-  padding: 20px;
-  gap: 10px;
-}
-
-.toggle-btn {
-  flex: 1;
-  padding: 15px 20px;
-  border: none;
-  border-radius: 12px;
-  font-size: 16px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  background: white;
-  color: #718096;
-  border: 2px solid transparent;
-}
-
-.toggle-btn.active {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  border-color: transparent;
-  transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
-}
-
-.toggle-btn:hover:not(.active) {
-  background: #edf2f7;
-  transform: translateY(-1px);
 }
 
 .form-container {
@@ -926,26 +810,6 @@ export default {
     border-radius: 15px;
   }
   
-  .title {
-    font-size: 1.75rem;
-    padding: 25px 15px 15px;
-  }
-  
-  .dictionary-btn {
-    padding: 12px 20px;
-    font-size: 15px;
-  }
-  
-  .toggle-container {
-    padding: 15px;
-    gap: 8px;
-  }
-  
-  .toggle-btn {
-    padding: 12px 16px;
-    font-size: 14px;
-  }
-  
   .form-container,
   .words-list {
     padding: 20px;
@@ -1020,25 +884,6 @@ export default {
   
   .container {
     border-radius: 12px;
-  }
-  
-  .title {
-    font-size: 1.5rem;
-    padding: 20px 12px 12px;
-  }
-  
-  .dictionary-btn {
-    padding: 10px 18px;
-    font-size: 14px;
-  }
-  
-  .toggle-container {
-    padding: 12px;
-  }
-  
-  .toggle-btn {
-    padding: 10px 12px;
-    font-size: 13px;
   }
   
   .form-container,
@@ -1117,23 +962,6 @@ export default {
 .dark .word-adder .container {
   background: #2d3748;
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
-}
-
-.dark .word-adder .title {
-  color: #e2e8f0;
-}
-
-.dark .word-adder .toggle-container {
-  background: #1a202c;
-}
-
-.dark .word-adder .toggle-btn {
-  background: #2d3748;
-  color: #a0aec0;
-}
-
-.dark .word-adder .toggle-btn:hover:not(.active) {
-  background: #374151;
 }
 
 .dark .word-adder .form-container {

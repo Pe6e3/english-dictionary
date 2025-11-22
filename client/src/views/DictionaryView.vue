@@ -43,7 +43,7 @@
               <!-- Режим просмотра -->
               <div v-if="!item.editing" class="row-content">
                 <div class="col-english">
-                  <span class="text-content">{{ item.english_word || item.english_phrase }}</span>
+                  <span class="text-content">{{ item.english_text }}</span>
                 </div>
                 <div class="col-arrow">→</div>
                 <div class="col-russian">
@@ -77,7 +77,7 @@
                     v-model="item.editEnglish"
                     type="text"
                     class="edit-input"
-                    placeholder="Слово или фраза"
+                    placeholder="Английский текст"
                   />
                 </div>
                 <div class="col-arrow">→</div>
@@ -131,7 +131,7 @@
                   @mouseleave="hideTranslation(item)"
                 >
                   <div class="card-english">
-                    <span class="card-text">{{ item.english_word || item.english_phrase }}</span>
+                    <span class="card-text">{{ item.english_text }}</span>
                   </div>
                   <div 
                     class="card-russian"
@@ -165,12 +165,12 @@
               <div v-else class="card-edit">
                 <div class="card-edit-inputs">
                   <div class="card-edit-group">
-                    <label class="card-edit-label">Слово или фраза</label>
+                    <label class="card-edit-label">Английский текст</label>
                     <input
                       v-model="item.editEnglish"
                       type="text"
                       class="card-edit-input"
-                      placeholder="Слово или фраза"
+                      placeholder="Английский текст"
                     />
                   </div>
                   <div class="card-edit-group">
@@ -216,7 +216,7 @@
     <div v-if="showDeleteModal" class="modal-overlay" @click="closeDeleteModal">
       <div class="modal" @click.stop>
         <h3>Подтверждение удаления</h3>
-        <p>Удалить "{{ itemToDelete ? (itemToDelete.english_word || itemToDelete.english_phrase) : '' }}"?</p>
+        <p>Удалить "{{ itemToDelete ? itemToDelete.english_text : '' }}"?</p>
         <div class="modal-actions">
           <button class="cancel-btn" @click="closeDeleteModal">Отмена</button>
           <button class="delete-btn" @click="deleteItem">Удалить</button>
@@ -233,8 +233,7 @@ export default {
   name: 'DictionaryView',
   data() {
     return {
-      words: [],
-      phrases: [],
+      translations: [],
       searchQuery: '',
       showDeleteModal: false,
       itemToDelete: null,
@@ -251,25 +250,18 @@ export default {
       return user ? user.username : null
     },
     allItems() {
-      // Объединяем слова и фразы в один массив
-      const wordsWithType = this.words.map(item => ({ 
+      // Добавляем состояние показа перевода к каждому элементу
+      return this.translations.map(item => ({ 
         ...item, 
-        itemType: 'word',
         showTranslation: this.showTranslationMap[item.id] || false
       }))
-      const phrasesWithType = this.phrases.map(item => ({ 
-        ...item, 
-        itemType: 'phrase',
-        showTranslation: this.showTranslationMap[item.id] || false
-      }))
-      return [...wordsWithType, ...phrasesWithType]
     },
     filteredItems() {
       if (!this.searchQuery.trim()) return this.allItems
       
       const query = this.searchQuery.toLowerCase()
       return this.allItems.filter(item => {
-        const english = item.english_word || item.english_phrase
+        const english = item.english_text
         return english.toLowerCase().includes(query) || 
                item.russian_translation.toLowerCase().includes(query)
       })
@@ -281,17 +273,10 @@ export default {
   methods: {
     async loadData() {
       try {
-        // Загружаем слова и фразы параллельно
-        const [wordsResponse, phrasesResponse] = await Promise.all([
-          fetch(`${this.apiBaseUrl}/words?username=${encodeURIComponent(this.currentUsername)}`),
-          fetch(`${this.apiBaseUrl}/phrases?username=${encodeURIComponent(this.currentUsername)}`)
-        ])
-
-        if (wordsResponse.ok) {
-          this.words = await wordsResponse.json()
-        }
-        if (phrasesResponse.ok) {
-          this.phrases = await phrasesResponse.json()
+        const response = await fetch(`${this.apiBaseUrl}/translations?username=${encodeURIComponent(this.currentUsername)}`)
+        
+        if (response.ok) {
+          this.translations = await response.json()
         }
       } catch (error) {
         console.error('Ошибка при загрузке данных:', error)
@@ -309,18 +294,19 @@ export default {
     startEdit(item) {
       // Создаем копии для редактирования
       item.editing = true
-      item.editEnglish = item.english_word || item.english_phrase
+      item.editEnglish = item.english_text
       item.editRussian = item.russian_translation
     },
 
     async saveEdit(item) {
       try {
-        const endpoint = item.itemType === 'word' ? 'update-word' : 'update-phrase'
-        const body = item.itemType === 'word' 
-          ? { englishWord: item.editEnglish.trim(), russianTranslation: item.editRussian.trim(), username: this.currentUsername }
-          : { englishPhrase: item.editEnglish.trim(), russianTranslation: item.editRussian.trim(), username: this.currentUsername }
+        const body = { 
+          englishText: item.editEnglish.trim(), 
+          russianTranslation: item.editRussian.trim(), 
+          username: this.currentUsername 
+        }
 
-        const response = await fetch(`${this.apiBaseUrl}/${endpoint}/${item.id}`, {
+        const response = await fetch(`${this.apiBaseUrl}/update-translation/${item.id}`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json'
@@ -330,11 +316,7 @@ export default {
 
         if (response.ok) {
           // Обновляем данные в локальном массиве
-          if (item.itemType === 'word') {
-            item.english_word = item.editEnglish.trim()
-          } else {
-            item.english_phrase = item.editEnglish.trim()
-          }
+          item.english_text = item.editEnglish.trim()
           item.russian_translation = item.editRussian.trim()
           
           // Выходим из режима редактирования
@@ -374,18 +356,13 @@ export default {
       if (!this.itemToDelete) return
 
       try {
-        const endpoint = this.itemToDelete.itemType === 'word' ? 'delete-word' : 'delete-phrase'
-        const response = await fetch(`${this.apiBaseUrl}/${endpoint}/${this.itemToDelete.id}?username=${encodeURIComponent(this.currentUsername)}`, {
+        const response = await fetch(`${this.apiBaseUrl}/delete-translation/${this.itemToDelete.id}?username=${encodeURIComponent(this.currentUsername)}`, {
           method: 'DELETE'
         })
 
         if (response.ok) {
           // Удаляем из локального массива
-          if (this.itemToDelete.itemType === 'word') {
-            this.words = this.words.filter(w => w.id !== this.itemToDelete.id)
-          } else {
-            this.phrases = this.phrases.filter(p => p.id !== this.itemToDelete.id)
-          }
+          this.translations = this.translations.filter(t => t.id !== this.itemToDelete.id)
           
           this.closeDeleteModal()
         } else {
