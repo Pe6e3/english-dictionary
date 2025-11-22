@@ -1,24 +1,6 @@
 <template>
   <div class="dictionary-view">
     <div class="container">
-      <h1 class="title">Словарь английских слов</h1>
-      
-      <!-- Переключатель между словами и фразами -->
-      <div class="toggle-container">
-        <button 
-          :class="['toggle-btn', { active: mode === 'word' }]"
-          @click="mode = 'word'"
-        >
-          Слова ({{ words.length }})
-        </button>
-        <button 
-          :class="['toggle-btn', { active: mode === 'phrase' }]"
-          @click="mode = 'phrase'"
-        >
-          Фразы ({{ phrases.length }})
-        </button>
-      </div>
-
       <!-- Поиск и статистика -->
       <div class="header-row">
         <div class="search-container">
@@ -30,7 +12,7 @@
           />
         </div>
         <div class="stats-compact">
-          <span class="stat-badge">{{ words.length + phrases.length }}</span>
+          <span class="stat-badge">{{ allItems.length }}</span>
           <span class="stat-label">всего</span>
         </div>
       </div>
@@ -61,7 +43,7 @@
               <!-- Режим просмотра -->
               <div v-if="!item.editing" class="row-content">
                 <div class="col-english">
-                  <span class="text-content">{{ mode === 'word' ? item.english_word : item.english_phrase }}</span>
+                  <span class="text-content">{{ item.english_word || item.english_phrase }}</span>
                 </div>
                 <div class="col-arrow">→</div>
                 <div class="col-russian">
@@ -95,7 +77,7 @@
                     v-model="item.editEnglish"
                     type="text"
                     class="edit-input"
-                    :placeholder="mode === 'word' ? 'Слово' : 'Фраза'"
+                    placeholder="Слово или фраза"
                   />
                 </div>
                 <div class="col-arrow">→</div>
@@ -149,7 +131,7 @@
                   @mouseleave="hideTranslation(item)"
                 >
                   <div class="card-english">
-                    <span class="card-text">{{ mode === 'word' ? item.english_word : item.english_phrase }}</span>
+                    <span class="card-text">{{ item.english_word || item.english_phrase }}</span>
                   </div>
                   <div 
                     class="card-russian"
@@ -183,12 +165,12 @@
               <div v-else class="card-edit">
                 <div class="card-edit-inputs">
                   <div class="card-edit-group">
-                    <label class="card-edit-label">{{ mode === 'word' ? 'Слово' : 'Фраза' }}</label>
+                    <label class="card-edit-label">Слово или фраза</label>
                     <input
                       v-model="item.editEnglish"
                       type="text"
                       class="card-edit-input"
-                      :placeholder="mode === 'word' ? 'Слово' : 'Фраза'"
+                      placeholder="Слово или фраза"
                     />
                   </div>
                   <div class="card-edit-group">
@@ -225,7 +207,7 @@
       <!-- Пагинация (если нужно) -->
       <div v-if="filteredItems.length > 20" class="pagination">
         <span class="pagination-info">
-          Показано {{ filteredItems.length }} из {{ (mode === 'word' ? words : phrases).length }}
+          Показано {{ filteredItems.length }} из {{ allItems.length }}
         </span>
       </div>
     </div>
@@ -234,7 +216,7 @@
     <div v-if="showDeleteModal" class="modal-overlay" @click="closeDeleteModal">
       <div class="modal" @click.stop>
         <h3>Подтверждение удаления</h3>
-        <p>Удалить "{{ itemToDelete ? (mode === 'word' ? itemToDelete.english_word : itemToDelete.english_phrase) : '' }}"?</p>
+        <p>Удалить "{{ itemToDelete ? (itemToDelete.english_word || itemToDelete.english_phrase) : '' }}"?</p>
         <div class="modal-actions">
           <button class="cancel-btn" @click="closeDeleteModal">Отмена</button>
           <button class="delete-btn" @click="deleteItem">Удалить</button>
@@ -249,7 +231,6 @@ export default {
   name: 'DictionaryView',
   data() {
     return {
-      mode: 'word', // 'word' или 'phrase'
       words: [],
       phrases: [],
       searchQuery: '',
@@ -262,13 +243,18 @@ export default {
       // Используем относительный путь через nginx прокси
       return '/english-api/api'
     },
+    allItems() {
+      // Объединяем слова и фразы в один массив
+      const wordsWithType = this.words.map(item => ({ ...item, itemType: 'word' }))
+      const phrasesWithType = this.phrases.map(item => ({ ...item, itemType: 'phrase' }))
+      return [...wordsWithType, ...phrasesWithType]
+    },
     filteredItems() {
-      const items = this.mode === 'word' ? this.words : this.phrases
-      if (!this.searchQuery.trim()) return items
+      if (!this.searchQuery.trim()) return this.allItems
       
       const query = this.searchQuery.toLowerCase()
-      return items.filter(item => {
-        const english = this.mode === 'word' ? item.english_word : item.english_phrase
+      return this.allItems.filter(item => {
+        const english = item.english_word || item.english_phrase
         return english.toLowerCase().includes(query) || 
                item.russian_translation.toLowerCase().includes(query)
       })
@@ -308,14 +294,14 @@ export default {
     startEdit(item) {
       // Создаем копии для редактирования
       item.editing = true
-      item.editEnglish = this.mode === 'word' ? item.english_word : item.english_phrase
+      item.editEnglish = item.english_word || item.english_phrase
       item.editRussian = item.russian_translation
     },
 
     async saveEdit(item) {
       try {
-        const endpoint = this.mode === 'word' ? 'update-word' : 'update-phrase'
-        const body = this.mode === 'word' 
+        const endpoint = item.itemType === 'word' ? 'update-word' : 'update-phrase'
+        const body = item.itemType === 'word' 
           ? { englishWord: item.editEnglish.trim(), russianTranslation: item.editRussian.trim() }
           : { englishPhrase: item.editEnglish.trim(), russianTranslation: item.editRussian.trim() }
 
@@ -329,7 +315,7 @@ export default {
 
         if (response.ok) {
           // Обновляем данные в локальном массиве
-          if (this.mode === 'word') {
+          if (item.itemType === 'word') {
             item.english_word = item.editEnglish.trim()
           } else {
             item.english_phrase = item.editEnglish.trim()
@@ -373,14 +359,14 @@ export default {
       if (!this.itemToDelete) return
 
       try {
-        const endpoint = this.mode === 'word' ? 'delete-word' : 'delete-phrase'
+        const endpoint = this.itemToDelete.itemType === 'word' ? 'delete-word' : 'delete-phrase'
         const response = await fetch(`${this.apiBaseUrl}/${endpoint}/${this.itemToDelete.id}`, {
           method: 'DELETE'
         })
 
         if (response.ok) {
           // Удаляем из локального массива
-          if (this.mode === 'word') {
+          if (this.itemToDelete.itemType === 'word') {
             this.words = this.words.filter(w => w.id !== this.itemToDelete.id)
           } else {
             this.phrases = this.phrases.filter(p => p.id !== this.itemToDelete.id)
@@ -409,11 +395,6 @@ export default {
         return 'Неизвестная дата'
       }
     }
-  },
-  watch: {
-    mode() {
-      this.searchQuery = ''
-    }
   }
 }
 </script>
@@ -433,50 +414,6 @@ export default {
   border-radius: 20px;
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
   overflow: hidden;
-}
-
-.title {
-  text-align: center;
-  color: white;
-  font-size: 2.2rem;
-  font-weight: 700;
-  margin: 0;
-  padding: 30px 20px 20px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-}
-
-.toggle-container {
-  display: flex;
-  background: #f7fafc;
-  padding: 15px 20px;
-  gap: 10px;
-}
-
-.toggle-btn {
-  flex: 1;
-  padding: 12px 20px;
-  border: none;
-  border-radius: 10px;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  background: white;
-  color: #718096;
-  border: 2px solid transparent;
-}
-
-.toggle-btn.active {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  border-color: transparent;
-  transform: translateY(-1px);
-  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.3);
-}
-
-.toggle-btn:hover:not(.active) {
-  background: #edf2f7;
-  transform: translateY(-1px);
 }
 
 .header-row {
@@ -772,11 +709,6 @@ export default {
     border-radius: 15px;
   }
   
-  .title {
-    font-size: 2rem;
-    padding: 25px 15px 15px;
-  }
-  
   .table-header,
   .row-content,
   .edit-row {
@@ -949,20 +881,6 @@ export default {
     padding: 10px;
   }
   
-  .title {
-    font-size: 1.75rem;
-    padding: 25px 15px 15px;
-  }
-  
-  .toggle-container {
-    padding: 12px 15px;
-  }
-  
-  .toggle-btn {
-    padding: 12px 16px;
-    font-size: 14px;
-  }
-  
   .header-row {
     flex-direction: column;
     gap: 15px;
@@ -1036,21 +954,6 @@ export default {
     border-radius: 15px;
   }
   
-  .title {
-    font-size: 1.5rem;
-    padding: 20px 12px 12px;
-  }
-  
-  .toggle-container {
-    padding: 10px 12px;
-    gap: 8px;
-  }
-  
-  .toggle-btn {
-    padding: 10px 12px;
-    font-size: 13px;
-  }
-  
   .header-row {
     padding: 12px;
   }
@@ -1089,19 +992,6 @@ export default {
 .dark .dictionary-view .container {
   background: #2d3748;
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
-}
-
-.dark .dictionary-view .toggle-container {
-  background: #1a202c;
-}
-
-.dark .dictionary-view .toggle-btn {
-  background: #2d3748;
-  color: #a0aec0;
-}
-
-.dark .dictionary-view .toggle-btn:hover:not(.active) {
-  background: #374151;
 }
 
 .dark .dictionary-view .header-row {

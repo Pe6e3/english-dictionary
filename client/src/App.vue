@@ -2,15 +2,15 @@
   <div id="app">
     <nav class="navigation">
       <div class="nav-container">
+        <button class="theme-toggle" @click="toggleTheme" :title="isDark ? 'Переключить на светлую тему' : 'Переключить на темную тему'">
+          {{ isDark ? '☀️' : '🌙' }}
+        </button>
         <RouterLink to="/" class="nav-link" active-class="active">
           🏠 Добавить слово
         </RouterLink>
         <RouterLink to="/dictionary" class="nav-link" active-class="active">
           📚 Словарь
         </RouterLink>
-        <button class="theme-toggle" @click="toggleTheme" :title="isDark ? 'Переключить на светлую тему' : 'Переключить на темную тему'">
-          {{ isDark ? '☀️' : '🌙' }}
-        </button>
       </div>
     </nav>
     <RouterView />
@@ -93,10 +93,13 @@ body {
   gap: 20px;
   padding: 0 20px;
   align-items: center;
+  position: relative;
 }
 
 .theme-toggle {
-  margin-left: auto;
+  position: absolute;
+  top: 10px;
+  right: 20px;
   background: rgba(255, 255, 255, 0.1);
   border: none;
   color: white;
@@ -110,6 +113,7 @@ body {
   justify-content: center;
   min-width: 44px;
   height: 44px;
+  z-index: 10;
 }
 
 .theme-toggle:hover {
@@ -141,10 +145,17 @@ body {
   .nav-container {
     flex-direction: column;
     gap: 10px;
+    padding-bottom: 60px;
   }
   
   .nav-link {
     text-align: center;
+  }
+  
+  .theme-toggle {
+    position: absolute;
+    top: 10px;
+    right: 20px;
   }
 }
 </style>
