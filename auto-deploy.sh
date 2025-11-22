@@ -181,11 +181,17 @@ $LAST_COMMIT_BODY
 
     # Используем Python для правильного формирования JSON
     if command -v python3 &> /dev/null; then
-        JSON_DATA=$(python3 -c "import json, sys; print(json.dumps({'massage': sys.stdin.read()}, ensure_ascii=False))" <<< "$MESSAGE" 2>/dev/null)
+        JSON_DATA=$(printf '%s' "$MESSAGE" | python3 -c "import json, sys; print(json.dumps({'massage': sys.stdin.read()}, ensure_ascii=False))" 2>/dev/null)
     else
         # Fallback: простое экранирование
         MESSAGE_ESCAPED=$(printf '%s' "$MESSAGE" | sed 's/\\/\\\\/g' | sed 's/"/\\"/g' | awk '{gsub(/\n/, "\\n"); print}')
         JSON_DATA="{\"massage\":\"$MESSAGE_ESCAPED\"}"
+    fi
+    
+    # Проверяем, что JSON не пустой
+    if [ -z "$JSON_DATA" ] || [ "$JSON_DATA" = "{\"massage\":\"\"}" ]; then
+        log_warn "⚠️  JSON данные пусты, пропускаем отправку"
+        return
     fi
     
     # Отправляем POST запрос
