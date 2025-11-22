@@ -190,9 +190,8 @@ export default {
   },
   computed: {
     apiBaseUrl() {
-      // Используем hostname текущего подключения (localhost или IP)
-      const hostname = window.location.hostname
-      return `http://${hostname}:3002/api`
+      // Используем относительный путь через nginx прокси
+      return '/english-api/api'
     }
   },
   mounted() {

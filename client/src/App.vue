@@ -8,6 +8,9 @@
         <RouterLink to="/dictionary" class="nav-link" active-class="active">
           📚 Словарь
         </RouterLink>
+        <button class="theme-toggle" @click="toggleTheme" :title="isDark ? 'Переключить на светлую тему' : 'Переключить на темную тему'">
+          {{ isDark ? '☀️' : '🌙' }}
+        </button>
       </div>
     </nav>
     <RouterView />
@@ -16,7 +19,42 @@
 
 <script>
 export default {
-  name: 'App'
+  name: 'App',
+  data() {
+    return {
+      isDark: true
+    }
+  },
+  mounted() {
+    this.initTheme()
+  },
+  methods: {
+    initTheme() {
+      const savedTheme = localStorage.getItem('theme')
+      if (savedTheme) {
+        this.isDark = savedTheme === 'dark'
+      } else {
+        this.isDark = true // По умолчанию темная тема
+        localStorage.setItem('theme', 'dark')
+      }
+      this.applyTheme()
+    },
+    toggleTheme() {
+      this.isDark = !this.isDark
+      this.applyTheme()
+      localStorage.setItem('theme', this.isDark ? 'dark' : 'light')
+    },
+    applyTheme() {
+      const root = document.documentElement
+      if (this.isDark) {
+        root.classList.remove('light')
+        root.classList.add('dark')
+      } else {
+        root.classList.remove('dark')
+        root.classList.add('light')
+      }
+    }
+  }
 }
 </script>
 
@@ -54,6 +92,29 @@ body {
   display: flex;
   gap: 20px;
   padding: 0 20px;
+  align-items: center;
+}
+
+.theme-toggle {
+  margin-left: auto;
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  color: white;
+  font-size: 24px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  height: 44px;
+}
+
+.theme-toggle:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: translateY(-1px);
 }
 
 .nav-link {
