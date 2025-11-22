@@ -140,14 +140,21 @@
             >
               <!-- Режим просмотра -->
               <div v-if="!item.editing" class="card-content">
-                <div class="card-main">
+                <div 
+                  class="card-main"
+                  @mousedown="showTranslation(item)"
+                  @mouseup="hideTranslation(item)"
+                  @touchstart="showTranslation(item)"
+                  @touchend="hideTranslation(item)"
+                  @mouseleave="hideTranslation(item)"
+                >
                   <div class="card-english">
-                    <span class="card-label">Английский:</span>
                     <span class="card-text">{{ mode === 'word' ? item.english_word : item.english_phrase }}</span>
                   </div>
-                  <div class="card-arrow">→</div>
-                  <div class="card-russian">
-                    <span class="card-label">Русский:</span>
+                  <div 
+                    class="card-russian"
+                    :class="{ 'visible': item.showTranslation }"
+                  >
                     <span class="card-text">{{ item.russian_translation }}</span>
                   </div>
                 </div>
@@ -156,14 +163,14 @@
                   <div class="card-actions">
                     <button 
                       class="action-btn edit"
-                      @click="startEdit(item)"
+                      @click.stop="startEdit(item)"
                       title="Редактировать"
                     >
                       ✏️
                     </button>
                     <button 
                       class="action-btn delete"
-                      @click="confirmDelete(item)"
+                      @click.stop="confirmDelete(item)"
                       title="Удалить"
                     >
                       🗑️
@@ -290,6 +297,14 @@ export default {
       }
     },
 
+    showTranslation(item) {
+      this.$set(item, 'showTranslation', true)
+    },
+    
+    hideTranslation(item) {
+      this.$set(item, 'showTranslation', false)
+    },
+    
     startEdit(item) {
       // Создаем копии для редактирования
       item.editing = true
@@ -801,22 +816,44 @@ export default {
 
 .card-main {
   margin-bottom: 12px;
-}
-
-.card-english,
-.card-russian {
   display: flex;
-  flex-direction: column;
-  gap: 4px;
-  margin-bottom: 12px;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  min-height: 60px;
+  padding: 8px;
+  border-radius: 8px;
+  transition: background-color 0.2s ease;
 }
 
-.card-label {
-  font-size: 11px;
-  color: #a0aec0;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+.card-main:active {
+  background-color: rgba(102, 126, 234, 0.1);
+}
+
+.card-english {
+  flex: 1;
+  display: flex;
+  align-items: center;
+}
+
+.card-russian {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.2s ease, visibility 0.2s ease;
+}
+
+.card-russian.visible {
+  opacity: 1;
+  visibility: visible;
 }
 
 .card-text {
@@ -825,14 +862,6 @@ export default {
   font-weight: 600;
   word-break: break-word;
   line-height: 1.4;
-}
-
-.card-arrow {
-  text-align: center;
-  color: #cbd5e0;
-  font-weight: bold;
-  font-size: 20px;
-  margin: 8px 0;
 }
 
 .card-footer {
@@ -1141,6 +1170,10 @@ export default {
 
 .dark .dictionary-view .card-text {
   color: #e2e8f0;
+}
+
+.dark .dictionary-view .card-main:active {
+  background-color: rgba(102, 126, 234, 0.2);
 }
 
 .dark .dictionary-view .card-label {
