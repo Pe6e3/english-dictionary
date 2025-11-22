@@ -227,6 +227,8 @@
 </template>
 
 <script>
+import { authService } from '@/utils/auth'
+
 export default {
   name: 'DictionaryView',
   data() {
@@ -243,6 +245,10 @@ export default {
     apiBaseUrl() {
       // Используем относительный путь через nginx прокси
       return '/english-api/api'
+    },
+    currentUsername() {
+      const user = authService.getCurrentUser()
+      return user ? user.username : null
     },
     allItems() {
       // Объединяем слова и фразы в один массив
@@ -277,8 +283,8 @@ export default {
       try {
         // Загружаем слова и фразы параллельно
         const [wordsResponse, phrasesResponse] = await Promise.all([
-          fetch(`${this.apiBaseUrl}/words`),
-          fetch(`${this.apiBaseUrl}/phrases`)
+          fetch(`${this.apiBaseUrl}/words?username=${encodeURIComponent(this.currentUsername)}`),
+          fetch(`${this.apiBaseUrl}/phrases?username=${encodeURIComponent(this.currentUsername)}`)
         ])
 
         if (wordsResponse.ok) {
@@ -311,8 +317,8 @@ export default {
       try {
         const endpoint = item.itemType === 'word' ? 'update-word' : 'update-phrase'
         const body = item.itemType === 'word' 
-          ? { englishWord: item.editEnglish.trim(), russianTranslation: item.editRussian.trim() }
-          : { englishPhrase: item.editEnglish.trim(), russianTranslation: item.editRussian.trim() }
+          ? { englishWord: item.editEnglish.trim(), russianTranslation: item.editRussian.trim(), username: this.currentUsername }
+          : { englishPhrase: item.editEnglish.trim(), russianTranslation: item.editRussian.trim(), username: this.currentUsername }
 
         const response = await fetch(`${this.apiBaseUrl}/${endpoint}/${item.id}`, {
           method: 'PUT',
@@ -369,7 +375,7 @@ export default {
 
       try {
         const endpoint = this.itemToDelete.itemType === 'word' ? 'delete-word' : 'delete-phrase'
-        const response = await fetch(`${this.apiBaseUrl}/${endpoint}/${this.itemToDelete.id}`, {
+        const response = await fetch(`${this.apiBaseUrl}/${endpoint}/${this.itemToDelete.id}?username=${encodeURIComponent(this.currentUsername)}`, {
           method: 'DELETE'
         })
 

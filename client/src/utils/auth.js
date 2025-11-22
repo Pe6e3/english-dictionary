@@ -5,6 +5,10 @@ const USERS = {
   anton: {
     username: 'anton',
     password: '12345678'
+  },
+  fedor: {
+    username: 'fedor',
+    password: '12345678'
   }
 }
 

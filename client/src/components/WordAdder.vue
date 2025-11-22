@@ -164,6 +164,7 @@
 
 <script>
 import { RouterLink } from 'vue-router'
+import { authService } from '@/utils/auth'
 
 export default {
   name: 'WordAdder',
@@ -192,6 +193,10 @@ export default {
     apiBaseUrl() {
       // Используем относительный путь через nginx прокси
       return '/english-api/api'
+    },
+    currentUsername() {
+      const user = authService.getCurrentUser()
+      return user ? user.username : null
     }
   },
   mounted() {
@@ -229,7 +234,7 @@ export default {
 
         try {
           const endpoint = this.mode === 'word' ? 'check-word' : 'check-phrase'
-          const url = `${this.apiBaseUrl}/${endpoint}/${encodeURIComponent(input)}`
+          const url = `${this.apiBaseUrl}/${endpoint}/${encodeURIComponent(input)}?username=${encodeURIComponent(this.currentUsername)}`
           console.log('Checking URL:', url)
           
           const response = await fetch(url)
@@ -266,8 +271,8 @@ export default {
       try {
         const endpoint = this.mode === 'word' ? 'add-word' : 'add-phrase'
         const body = this.mode === 'word' 
-          ? { englishWord: this.englishInput.trim(), russianTranslation: this.russianInput.trim() }
-          : { englishPhrase: this.englishInput.trim(), russianTranslation: this.russianInput.trim() }
+          ? { englishWord: this.englishInput.trim(), russianTranslation: this.russianInput.trim(), username: this.currentUsername }
+          : { englishPhrase: this.englishInput.trim(), russianTranslation: this.russianInput.trim(), username: this.currentUsername }
 
         const url = `${this.apiBaseUrl}/${endpoint}`
         console.log('Submitting to URL:', url)
@@ -311,7 +316,7 @@ export default {
     async loadItems() {
       try {
         const endpoint = this.mode === 'word' ? 'words' : 'phrases'
-        const url = `${this.apiBaseUrl}/${endpoint}`
+        const url = `${this.apiBaseUrl}/${endpoint}?username=${encodeURIComponent(this.currentUsername)}`
         console.log('Loading from URL:', url)
         
         const response = await fetch(url)
