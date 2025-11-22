@@ -123,6 +123,7 @@ export default {
   components: {
     RouterLink
   },
+  inject: ['updateTranslationsCount'],
   data() {
     return {
       englishInput: '',
@@ -249,7 +250,9 @@ export default {
         this.selectedTranslationIndex = 0
         
         // Обновляем счетчик в навигации
-        this.$root.$emit('update-translations-count')
+        if (this.updateTranslationsCount) {
+          this.updateTranslationsCount()
+        }
         
         // Фокус на поле ввода английского языка после сохранения
         this.$nextTick(() => {

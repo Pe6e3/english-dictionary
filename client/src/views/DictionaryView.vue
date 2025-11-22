@@ -127,6 +127,7 @@ import { authService } from '@/utils/auth'
 
 export default {
   name: 'DictionaryView',
+  inject: ['updateTranslationsCount'],
   data() {
     return {
       translations: [],
@@ -231,7 +232,9 @@ export default {
           delete translation.editRussian
           
           // Обновляем счетчик в навигации
-          this.$root.$emit('update-translations-count')
+          if (this.updateTranslationsCount) {
+            this.updateTranslationsCount()
+          }
         } else {
           const errorData = await response.json()
           alert(`Ошибка при обновлении: ${errorData.error}`)
@@ -278,7 +281,9 @@ export default {
           this.translations = this.translations.filter(t => t.id !== this.itemToDelete.id)
           
           // Обновляем счетчик в навигации
-          this.$root.$emit('update-translations-count')
+          if (this.updateTranslationsCount) {
+            this.updateTranslationsCount()
+          }
           
           this.closeDeleteModal()
         } else {

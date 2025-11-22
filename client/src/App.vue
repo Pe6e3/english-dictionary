@@ -52,20 +52,17 @@ export default {
       }
     }
   },
+  provide() {
+    return {
+      updateTranslationsCount: this.loadTranslationsCount
+    }
+  },
   mounted() {
     this.initTheme()
     this.checkAuth()
     if (this.isAuthenticated) {
       this.loadTranslationsCount()
     }
-    
-    // Слушаем события обновления счетчика
-    this.$root.$on('update-translations-count', () => {
-      this.loadTranslationsCount()
-    })
-  },
-  beforeDestroy() {
-    this.$root.$off('update-translations-count')
   },
   methods: {
     checkAuth() {
