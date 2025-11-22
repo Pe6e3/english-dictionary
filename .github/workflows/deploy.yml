@@ -45,6 +45,8 @@ jobs:
             if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "201" ]; then
               echo "✅ Деплой запущен успешно (HTTP $HTTP_CODE)"
               echo "$BODY"
+              echo ""
+              echo "ℹ️  Уведомление о деплое будет отправлено сервером после завершения деплоя"
             else
               echo "❌ Ошибка деплоя (HTTP $HTTP_CODE)"
               echo "$BODY"
@@ -55,40 +57,4 @@ jobs:
             exit 1
           fi
         continue-on-error: true
-      
-      - name: Send deployment notification
-        if: always()
-        run: |
-          COMMIT_SHORT=$(git log -1 --format='%h')
-          COMMIT_FULL=$(git log -1 --format='%H')
-          COMMIT_MSG=$(git log -1 --format='%s')
-          COMMIT_BODY=$(git log -1 --format='%B' | sed '/^$/d' | head -5 | tr '\n' '; ')
-          COMMIT_DATE=$(git log -1 --format='%cd' --date=format:'%Y-%m-%d %H:%M:%S')
-          COMMIT_AUTHOR=$(git log -1 --format='%an')
-          BRANCH=$(git branch --show-current)
-          DEPLOY_TIME=$(date '+%Y-%m-%d %H:%M:%S')
-          
-          if [ "${{ steps.deploy_webhook.outcome }}" == "success" ]; then
-            STATUS="✅ Успешно"
-            DETAILS="Деплой выполнен через GitHub Actions (Webhook)"
-          else
-            STATUS="⚠️ Не выполнен"
-            DETAILS="Деплой через GitHub Actions не выполнен. Проверьте настройки webhook (DEPLOY_WEBHOOK_URL и DEPLOY_SECRET). Деплой можно выполнить вручную на сервере: cd /var/www/english && ./auto-deploy.sh"
-          fi
-          
-          # Формируем сообщение через printf для избежания проблем с YAML
-          MSG_FILE=$(mktemp)
-          printf 'Деплой English: %s\n\n📦 Информация о версии:\n• Коммит: %s (%s)\n• Сообщение: %s\n• Автор: %s\n• Дата коммита: %s\n• Ветка: %s\n\n📝 Текст коммита:\n%s\n\n🔄 Статус деплоя:\n%s\n\n⏰ Время: %s\n' \
-            "$STATUS" "$COMMIT_SHORT" "$COMMIT_FULL" "$COMMIT_MSG" "$COMMIT_AUTHOR" "$COMMIT_DATE" "$BRANCH" "$COMMIT_BODY" "$DETAILS" "$DEPLOY_TIME" > "$MSG_FILE"
-          
-          # Формируем JSON и отправляем уведомление
-          JSON_DATA=$(python3 -c "import json; f=open('$MSG_FILE', 'r', encoding='utf-8'); msg=f.read(); f.close(); print(json.dumps({'message': msg}, ensure_ascii=False))" 2>/dev/null)
-          rm -f "$MSG_FILE"
-          
-          if [ -n "$JSON_DATA" ] && [ "${#JSON_DATA}" -gt 20 ]; then
-            curl -s -X POST \
-              -H "Content-Type: application/json" \
-              -d "$JSON_DATA" \
-              "https://stage.istransit.kz/api/terminals/v01/send_log/" || echo "Не удалось отправить уведомление"
-          fi
 

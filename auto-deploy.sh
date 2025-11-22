@@ -189,7 +189,7 @@ $LAST_COMMIT_BODY
     else
         # Fallback: простое экранирование
         MESSAGE_ESCAPED=$(printf '%s' "$MESSAGE" | sed 's/\\/\\\\/g' | sed 's/"/\\"/g' | awk '{gsub(/\n/, "\\n"); print}')
-        JSON_DATA="{\"massage\":\"$MESSAGE_ESCAPED\"}"
+        JSON_DATA="{\"message\":\"$MESSAGE_ESCAPED\"}"
     fi
     
     # Проверяем, что JSON не пустой
