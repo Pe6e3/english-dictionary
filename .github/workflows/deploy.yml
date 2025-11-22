@@ -30,31 +30,29 @@ jobs:
           echo "Ветка:      $(git branch --show-current)"
           echo "═══════════════════════════════════════════════════════════"
       
-      - name: Deploy to server via SSH
-        id: deploy_ssh
-        uses: appleboy/ssh-action@v0.1.7
-        with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USER }}
-          key: ${{ secrets.SSH_KEY }}
-          port: ${{ secrets.SSH_PORT || 22 }}
-          timeout: 30s
-          script: |
-            cd /var/www/english
-            ./auto-deploy.sh
-        continue-on-error: true
-      
-      - name: Deploy via webhook (fallback)
-        if: steps.deploy_ssh.outcome == 'failure'
+      - name: Deploy via webhook
         id: deploy_webhook
         run: |
           if [ -n "${{ secrets.DEPLOY_WEBHOOK_URL }}" ] && [ -n "${{ secrets.DEPLOY_SECRET }}" ]; then
-            curl -s -X POST \
+            echo "🚀 Запуск деплоя через webhook..."
+            RESPONSE=$(curl -s -w "\n%{http_code}" -X POST \
               -H "Content-Type: application/json" \
               -d "{\"secret\":\"${{ secrets.DEPLOY_SECRET }}\"}" \
-              "${{ secrets.DEPLOY_WEBHOOK_URL }}" || echo "Webhook деплой не выполнен"
+              "${{ secrets.DEPLOY_WEBHOOK_URL }}")
+            HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+            BODY=$(echo "$RESPONSE" | sed '$d')
+            
+            if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "201" ]; then
+              echo "✅ Деплой запущен успешно (HTTP $HTTP_CODE)"
+              echo "$BODY"
+            else
+              echo "❌ Ошибка деплоя (HTTP $HTTP_CODE)"
+              echo "$BODY"
+              exit 1
+            fi
           else
-            echo "Webhook не настроен (DEPLOY_WEBHOOK_URL и DEPLOY_SECRET)"
+            echo "❌ Webhook не настроен (DEPLOY_WEBHOOK_URL и DEPLOY_SECRET)"
+            exit 1
           fi
         continue-on-error: true
       
@@ -70,15 +68,12 @@ jobs:
           BRANCH=$(git branch --show-current)
           DEPLOY_TIME=$(date '+%Y-%m-%d %H:%M:%S')
           
-          if [ "${{ steps.deploy_ssh.outcome }}" == "success" ]; then
+          if [ "${{ steps.deploy_webhook.outcome }}" == "success" ]; then
             STATUS="✅ Успешно"
-            DETAILS="Деплой выполнен через GitHub Actions (SSH)"
-          elif [ "${{ steps.deploy_webhook.outcome }}" == "success" ]; then
-            STATUS="✅ Успешно"
-            DETAILS="Деплой выполнен через GitHub Actions (Webhook fallback)"
+            DETAILS="Деплой выполнен через GitHub Actions (Webhook)"
           else
             STATUS="⚠️ Не выполнен"
-            DETAILS="Деплой через GitHub Actions не выполнен (проблема с SSH подключением). Деплой можно выполнить вручную на сервере: cd /var/www/english && ./auto-deploy.sh"
+            DETAILS="Деплой через GitHub Actions не выполнен. Проверьте настройки webhook (DEPLOY_WEBHOOK_URL и DEPLOY_SECRET). Деплой можно выполнить вручную на сервере: cd /var/www/english && ./auto-deploy.sh"
           fi
           
           # Формируем сообщение через printf для избежания проблем с YAML
