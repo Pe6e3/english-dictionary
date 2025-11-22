@@ -1,28 +1,16 @@
 <template>
   <div class="translations-view">
     <div class="container">
-      <!-- Поле поиска -->
-      <div class="header-row">
-        <div class="search-container">
-          <input
-            v-model="searchQuery"
-            type="text"
-            placeholder="Поиск переводов..."
-            class="search-input"
-          />
-        </div>
-      </div>
-
-      <!-- Форма добавления перевода -->
+      <!-- Объединенное поле поиска и ввода -->
       <div class="form-container">
         <div class="input-group">
-          <label for="englishText">Английский текст</label>
+          <label for="englishText">Поиск или ввод английского текста</label>
           <input
             id="englishText"
             v-model="englishInput"
             type="text"
-            placeholder="Введите слово или фразу..."
-            @input="checkExisting"
+            placeholder="Введите слово или фразу для поиска или добавления..."
+            @input="handleEnglishInput"
             @keyup.enter="handleSubmit"
           />
         </div>
@@ -121,7 +109,7 @@
       <!-- Карточки переводов -->
       <div class="translations-container">
         <div v-if="filteredItems.length === 0" class="empty-state">
-          {{ searchQuery ? 'Ничего не найдено' : 'Пока ничего не добавлено' }}
+          {{ englishInput ? 'Ничего не найдено' : 'Пока ничего не добавлено' }}
         </div>
         <div v-else class="items-grid">
           <div 
@@ -228,7 +216,6 @@ export default {
   inject: ['updateTranslationsCount'],
   data() {
     return {
-      searchQuery: '',
       englishInput: '',
       russianInput: '',
       existingTranslation: null,
@@ -262,9 +249,9 @@ export default {
       }))
     },
     filteredItems() {
-      if (!this.searchQuery.trim()) return this.allItems
+      if (!this.englishInput.trim()) return this.allItems
       
-      const query = this.searchQuery.toLowerCase()
+      const query = this.englishInput.toLowerCase()
       return this.allItems.filter(item => {
         const english = item.english_text
         return english.toLowerCase().includes(query) || 
@@ -288,6 +275,10 @@ export default {
       } catch (error) {
         console.error('Ошибка при загрузке данных:', error)
       }
+    },
+    handleEnglishInput() {
+      // При вводе проверяем существование перевода и фильтруем список
+      this.checkExisting()
     },
     async checkExisting() {
       if (this.checkTimeout) {
@@ -632,36 +623,6 @@ export default {
   border-radius: 20px;
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
   overflow: hidden;
-}
-
-.header-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 15px 20px;
-  background: #f7fafc;
-  border-bottom: 1px solid #e2e8f0;
-}
-
-.search-container {
-  flex: 1;
-  max-width: 400px;
-}
-
-.search-input {
-  width: 100%;
-  padding: 10px 15px;
-  border: 2px solid #e2e8f0;
-  border-radius: 8px;
-  font-size: 14px;
-  transition: all 0.3s ease;
-  box-sizing: border-box;
-}
-
-.search-input:focus {
-  outline: none;
-  border-color: #667eea;
-  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
 }
 
 .form-container {
@@ -1169,22 +1130,6 @@ export default {
     padding: 10px;
   }
   
-  .header-row {
-    flex-direction: column;
-    gap: 15px;
-    align-items: stretch;
-    padding: 15px;
-  }
-  
-  .search-container {
-    max-width: none;
-  }
-  
-  .search-input {
-    font-size: 16px;
-    padding: 12px 15px;
-  }
-  
   .form-container {
     padding: 20px;
   }
@@ -1239,22 +1184,6 @@ export default {
 .dark .translations-view .container {
   background: #2d3748;
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
-}
-
-.dark .translations-view .header-row {
-  background: #1a202c;
-  border-bottom-color: #4a5568;
-}
-
-.dark .translations-view .search-input {
-  background: #2d3748;
-  border-color: #4a5568;
-  color: #e2e8f0;
-}
-
-.dark .translations-view .search-input:focus {
-  border-color: #667eea;
-  background: #2d3748;
 }
 
 .dark .translations-view .input-group label {

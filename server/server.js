@@ -438,44 +438,52 @@ app.post('/api/add-translation', (req, res) => {
       return res.status(401).json({ error: 'Пользователь не найден' });
     }
 
-    // Пробуем добавить как слово (если короткое) или как фразу
-    // Для простоты всегда добавляем в words, но можно сделать логику определения
-    db.run(
-      'INSERT INTO words (english_word, russian_translation, user_id) VALUES (?, ?, ?)',
-      [englishText.trim(), russianTranslation.trim(), user.id],
-      function(err) {
-        if (err) {
-          if (err.code === 'SQLITE_CONSTRAINT_UNIQUE') {
-            // Если слово уже есть, пробуем добавить как фразу
-            db.run(
-              'INSERT INTO phrases (english_phrase, russian_translation, user_id) VALUES (?, ?, ?)',
-              [englishText.trim(), russianTranslation.trim(), user.id],
-              function(err2) {
-                if (err2) {
-                  if (err2.code === 'SQLITE_CONSTRAINT_UNIQUE') {
-                    return res.status(409).json({ error: 'Такой перевод уже существует' });
-                  }
-                  return res.status(500).json({ error: 'Ошибка при добавлении перевода' });
-                }
-                res.json({ 
-                  success: true, 
-                  id: this.lastID,
-                  message: 'Перевод успешно добавлен' 
-                });
-              }
-            );
-          } else {
-            return res.status(500).json({ error: 'Ошибка при добавлении перевода' });
+    const englishTextTrimmed = englishText.trim();
+    const russianTranslationTrimmed = russianTranslation.trim();
+
+    // Сначала проверяем, существует ли уже такой перевод
+    db.get(`
+      SELECT 
+        COALESCE(english_word, english_phrase) as text,
+        russian_translation as translation
+      FROM (
+        SELECT english_word, NULL as english_phrase, russian_translation
+        FROM words
+        WHERE LOWER(english_word) = ? AND user_id = ?
+        UNION ALL
+        SELECT NULL as english_word, english_phrase, russian_translation
+        FROM phrases
+        WHERE LOWER(english_phrase) = ? AND user_id = ?
+      )
+      LIMIT 1
+    `, [englishTextTrimmed.toLowerCase(), user.id, englishTextTrimmed.toLowerCase(), user.id], (err, existingRow) => {
+      if (err) {
+        console.error('Ошибка при проверке существования перевода:', err);
+        return res.status(500).json({ error: 'Ошибка при проверке перевода' });
+      }
+
+      if (existingRow) {
+        return res.status(409).json({ error: 'Такой перевод уже существует' });
+      }
+
+      // Если перевода нет, добавляем в words
+      db.run(
+        'INSERT INTO words (english_word, russian_translation, user_id) VALUES (?, ?, ?)',
+        [englishTextTrimmed, russianTranslationTrimmed, user.id],
+        function(insertErr) {
+          if (insertErr) {
+            console.error('Ошибка при добавлении перевода:', insertErr);
+            return res.status(500).json({ error: 'Ошибка при добавлении перевода: ' + insertErr.message });
           }
-        } else {
+          
           res.json({ 
             success: true, 
             id: this.lastID,
             message: 'Перевод успешно добавлен' 
           });
         }
-      }
-    );
+      );
+    });
   });
 });
 
