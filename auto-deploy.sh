@@ -179,12 +179,14 @@ $LAST_COMMIT_BODY
 
 ✅ Все компоненты успешно обновлены и перезапущены."
 
-    # Экранируем сообщение для JSON
-    # Заменяем обратные слеши, кавычки и переносы строк
-    MESSAGE_ESCAPED=$(printf '%s' "$MESSAGE" | sed 's/\\/\\\\/g' | sed 's/"/\\"/g' | sed 's/$/\\n/' | tr -d '\n' | sed 's/\\n$//')
-    
-    # Формируем JSON
-    JSON_DATA="{\"massage\":\"$MESSAGE_ESCAPED\"}"
+    # Используем Python для правильного формирования JSON
+    if command -v python3 &> /dev/null; then
+        JSON_DATA=$(python3 -c "import json, sys; print(json.dumps({'massage': sys.stdin.read()}, ensure_ascii=False))" <<< "$MESSAGE" 2>/dev/null)
+    else
+        # Fallback: простое экранирование
+        MESSAGE_ESCAPED=$(printf '%s' "$MESSAGE" | sed 's/\\/\\\\/g' | sed 's/"/\\"/g' | awk '{gsub(/\n/, "\\n"); print}')
+        JSON_DATA="{\"massage\":\"$MESSAGE_ESCAPED\"}"
+    fi
     
     # Отправляем POST запрос
     RESPONSE=$(curl -s -w "\n%{http_code}" -X POST \
